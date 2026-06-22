@@ -1161,6 +1161,8 @@ async function syncFromCloud(){
   renderEverything();
   showToast('Up to date ✓');
 }
+
+function onMonthChange(){
   monthIndex = document.getElementById('monthSelect').selectedIndex;
   seedFreshMonthIfFirst();
   renderEverything();
