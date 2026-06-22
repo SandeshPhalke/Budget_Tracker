@@ -1,675 +1,394 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Budget Tracker</title>
-<style>
-  :root {
-    --bg: #f5f5f0;
-    --surface: #ffffff;
-    --surface2: #f9f9f7;
-    --border: rgba(0,0,0,0.1);
-    --border2: rgba(0,0,0,0.18);
-    --text: #1a1a18;
-    --text2: #555550;
-    --text3: #888880;
-    --accent: #185FA5;
-    --accent-bg: #E6F1FB;
-    --accent-text: #0C447C;
-    --success: #3B6D11;
-    --success-bg: #EAF3DE;
-    --danger: #A32D2D;
-    --danger-bg: #FCEBEB;
-    --warning: #854F0B;
-    --warning-bg: #FAEEDA;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --shadow: 0 1px 3px rgba(0,0,0,0.08);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1a1a18;
-      --surface: #232320;
-      --surface2: #2a2a27;
-      --border: rgba(255,255,255,0.1);
-      --border2: rgba(255,255,255,0.18);
-      --text: #f0f0ea;
-      --text2: #aaaaaa;
-      --text3: #666660;
-      --accent: #378ADD;
-      --accent-bg: #042C53;
-      --accent-text: #85B7EB;
-      --success: #639922;
-      --success-bg: #173404;
-      --danger: #E24B4A;
-      --danger-bg: #501313;
-      --warning: #EF9F27;
-      --warning-bg: #412402;
-    }
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; -webkit-text-size-adjust: 100%; }
-  .app { max-width: 700px; margin: 0 auto; padding: 16px; }
-  h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
-  h2 { font-size: 17px; font-weight: 600; }
-  h3 { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text3); }
-  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 16px 20px; background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); }
-  .header-right { display: flex; align-items: center; gap: 10px; }
-  .month-badge { font-size: 13px; color: var(--text2); background: var(--surface2); padding: 4px 12px; border-radius: 20px; border: 0.5px solid var(--border); }
-  /* Summary cards */
-  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
-  .card { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 16px 18px; }
-  .card-label { font-size: 12px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-  .card-value { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
-  .card-sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
-  .c-income .card-value { color: var(--success); }
-  .c-expense .card-value { color: var(--danger); }
-  .c-save .card-value { color: var(--accent); }
-  .c-emergency .card-value { color: var(--warning); }
-  /* Progress bar */
-  .progress-wrap { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 16px 18px; margin-bottom: 20px; }
-  .progress-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
-  .progress-bar { height: 8px; background: var(--bg); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
-  .progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
-  .progress-ok { background: var(--success); }
-  .progress-warn { background: #EF9F27; }
-  .progress-over { background: var(--danger); }
-  .progress-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); }
-  /* Sections */
-  .section { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); margin-bottom: 16px; overflow: hidden; }
-  .section-head { padding: 14px 18px 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid var(--border); }
-  .add-btn { font-size: 13px; color: var(--accent-text); background: var(--accent-bg); border: none; border-radius: var(--radius-sm); padding: 4px 10px; cursor: pointer; font-weight: 500; }
-  .add-btn:active { opacity: 0.8; }
-  /* Expense rows */
-  .expense-row { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 0.5px solid var(--border); }
-  .expense-row:last-child { border-bottom: none; }
-  .expense-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-  .expense-info { flex: 1; min-width: 0; }
-  .expense-name { font-size: 14px; font-weight: 500; }
-  .expense-cat { font-size: 12px; color: var(--text3); }
-  .expense-amount { font-size: 15px; font-weight: 600; color: var(--danger); white-space: nowrap; }
-  .expense-actions { display: flex; gap: 6px; }
-  .icon-btn { background: none; border: 0.5px solid var(--border); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text2); }
-  .icon-btn:active { background: var(--bg); }
-  /* Income row */
-  .income-row { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 0.5px solid var(--border); }
-  .income-row:last-child { border-bottom: none; }
-  .income-amount { font-size: 15px; font-weight: 600; color: var(--success); }
-  /* Emergency fund */
-  .emfund { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); margin-bottom: 16px; padding: 16px 18px; }
-  .emfund-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-  .emfund-metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 12px 14px; }
-  .em-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: 500; }
-  .em-value { font-size: 18px; font-weight: 600; }
-  .em-note { font-size: 12px; color: var(--text2); margin-top: 2px; }
-  .em-slider-row { margin-top: 12px; }
-  .em-slider-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); margin-bottom: 6px; }
-  input[type=range] { width: 100%; accent-color: var(--accent); }
-  /* Forms */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: flex-end; justify-content: center; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: var(--surface); border-radius: 20px 20px 0 0; padding: 20px; width: 100%; max-width: 700px; }
-  .modal h2 { margin-bottom: 16px; font-size: 17px; }
-  .form-group { margin-bottom: 14px; }
-  .form-group label { display: block; font-size: 13px; color: var(--text2); margin-bottom: 5px; font-weight: 500; }
-  .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); font-size: 15px; background: var(--bg); color: var(--text); }
-  .form-group input:focus, .form-group select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .modal-btns { display: flex; gap: 10px; margin-top: 6px; }
-  .btn-primary { flex: 1; padding: 12px; background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; }
-  .btn-secondary { flex: 1; padding: 12px; background: var(--bg); color: var(--text); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); font-size: 15px; cursor: pointer; }
-  /* Tabs */
-  .tabs { display: flex; gap: 6px; margin-bottom: 20px; background: var(--surface); padding: 6px; border-radius: var(--radius); border: 0.5px solid var(--border); }
-  .tab { flex: 1; padding: 8px; text-align: center; font-size: 13px; font-weight: 500; border-radius: var(--radius-sm); cursor: pointer; border: none; background: none; color: var(--text2); }
-  .tab.active { background: var(--accent); color: white; }
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
-  /* Tags */
-  .tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
-  .tag-emi { background: #FAECE7; color: #993C1D; }
-  .tag-fixed { background: #EAF3DE; color: #3B6D11; }
-  .tag-variable { background: #FAEEDA; color: #854F0B; }
-  .tag-saving { background: #E6F1FB; color: #185FA5; }
-  @media (prefers-color-scheme: dark) {
-    .tag-emi { background: #4A1B0C; color: #F0997B; }
-    .tag-fixed { background: #173404; color: #97C459; }
-    .tag-variable { background: #412402; color: #FAC775; }
-    .tag-saving { background: #042C53; color: #85B7EB; }
-  }
-  .total-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: var(--surface2); font-weight: 600; font-size: 14px; }
-  .insight-box { padding: 12px 14px; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.5; margin-top: 10px; }
-  .insight-ok { background: var(--success-bg); color: var(--success); }
-  .insight-warn { background: var(--warning-bg); color: var(--warning); }
-  .insight-danger { background: var(--danger-bg); color: var(--danger); }
-</style>
-</head>
-<body>
-<div class="app">
-  <div class="header">
-    <div>
-      <h1>💰 Budget Tracker</h1>
-      <div style="font-size:13px;color:var(--text2);margin-top:2px;">Personal finance dashboard</div>
-    </div>
-    <div class="header-right">
-      <select id="monthSelect" style="font-size:13px;padding:5px 10px;border-radius:20px;border:0.5px solid var(--border);background:var(--surface2);color:var(--text);">
-        <option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option>
-        <option>May</option><option>Jun</option><option selected>Jul</option>
-        <option>Aug</option><option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
-      </select>
-    </div>
-  </div>
+import { useState, useEffect } from “react”;
 
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('overview')">Overview</button>
-    <button class="tab" onclick="switchTab('expenses')">Expenses</button>
-    <button class="tab" onclick="switchTab('income')">Income</button>
-    <button class="tab" onclick="switchTab('emergency')">Emergency Fund</button>
-  </div>
+const INCOME = 114994;
+const EXPENSES = [
+{ id: 1, name: “SBI EMI”, amount: 27507, cat: “emi”, icon: “🏦” },
+{ id: 2, name: “HDFC EMI”, amount: 33888, cat: “emi”, icon: “🏦” },
+{ id: 3, name: “Rent”, amount: 6800, cat: “fixed”, icon: “🏠” },
+{ id: 4, name: “Parents”, amount: 16000, cat: “fixed”, icon: “🙏” },
+{ id: 5, name: “Insurance”, amount: 5100, cat: “fixed”, icon: “🛡️” },
+{ id: 6, name: “Food”, amount: 10000, cat: “variable”, icon: “🍱” },
+{ id: 7, name: “Travel”, amount: 5000, cat: “variable”, icon: “🚆” },
+{ id: 8, name: “Petrol”, amount: 1500, cat: “variable”, icon: “⛽” },
+{ id: 9, name: “Light Bill”, amount: 600, cat: “variable”, icon: “💡” },
+{ id: 10, name: “Subscriptions”, amount: 1287, cat: “variable”, icon: “📱” },
+{ id: 11, name: “ChatGPT”, amount: 2500, cat: “variable”, icon: “🤖” },
+];
 
-  <!-- OVERVIEW TAB -->
-  <div class="tab-panel active" id="tab-overview">
-    <div class="summary-grid">
-      <div class="card c-income">
-        <div class="card-label">Monthly Income</div>
-        <div class="card-value" id="ov-income">₹0</div>
-        <div class="card-sub">All sources</div>
-      </div>
-      <div class="card c-expense">
-        <div class="card-label">Total Expenses</div>
-        <div class="card-value" id="ov-expenses">₹0</div>
-        <div class="card-sub">This month</div>
-      </div>
-      <div class="card c-save">
-        <div class="card-label">Savings</div>
-        <div class="card-value" id="ov-savings">₹0</div>
-        <div class="card-sub" id="ov-savings-pct">0% of income</div>
-      </div>
-      <div class="card c-emergency">
-        <div class="card-label">Balance</div>
-        <div class="card-value" id="ov-balance">₹0</div>
-        <div class="card-sub" id="ov-balance-note">After expenses</div>
-      </div>
-    </div>
+const TOTAL_FIXED = EXPENSES.reduce((s, e) => s + e.amount, 0);
+const EF_TARGET = TOTAL_FIXED * 6;
 
-    <div class="progress-wrap">
-      <div class="progress-header">
-        <h2>Budget used</h2>
-        <span id="ov-pct-label" style="font-size:14px;font-weight:600;">0%</span>
-      </div>
-      <div class="progress-bar">
-        <div class="progress-fill progress-ok" id="ov-progress-fill" style="width:0%"></div>
-      </div>
-      <div class="progress-labels">
-        <span>₹0 spent</span>
-        <span id="ov-progress-right">₹0 remaining</span>
-      </div>
-      <div id="ov-insight" class="insight-box insight-ok" style="margin-top:10px;"></div>
-    </div>
+const fmt = (n) => “₹” + Math.abs(Math.round(n)).toLocaleString(“en-IN”);
+const fmtK = (n) => n >= 100000 ? “₹” + (n/100000).toFixed(1) + “L” : n >= 1000 ? “₹” + (n/1000).toFixed(0) + “k” : “₹” + Math.round(n);
 
-    <div class="section">
-      <div class="section-head">
-        <h3>Expense breakdown</h3>
-      </div>
-      <div id="breakdown-list"></div>
-    </div>
-  </div>
+// Device sizes
+const VIEWS = {
+watch: { w: 184, label: “⌚ Watch” },
+phone: { w: 375, label: “📱 iPhone” },
+tablet: { w: 768, label: “📲 iPad” },
+mac: { w: 1200, label: “💻 MacBook” },
+};
 
-  <!-- EXPENSES TAB -->
-  <div class="tab-panel" id="tab-expenses">
-    <div class="section">
-      <div class="section-head">
-        <h2>Expenses</h2>
-        <button class="add-btn" onclick="openModal('expense')">+ Add</button>
-      </div>
-      <div id="expense-list"></div>
-      <div class="total-row">
-        <span>Total</span>
-        <span id="exp-total" style="color:var(--danger)">₹0</span>
-      </div>
-    </div>
-  </div>
+export default function App() {
+const [spent, setSpent] = useState(() => {
+const s = {};
+EXPENSES.filter(e => e.cat === “variable”).forEach(e => { s[e.id] = 0; });
+return s;
+});
+const [efSaved, setEfSaved] = useState(15000);
+const [preview, setPreview] = useState(“phone”);
+const [screen, setScreen] = useState(“home”);
+const [addingTo, setAddingTo] = useState(null);
+const [addAmt, setAddAmt] = useState(””);
 
-  <!-- INCOME TAB -->
-  <div class="tab-panel" id="tab-income">
-    <div class="section">
-      <div class="section-head">
-        <h2>Income sources</h2>
-        <button class="add-btn" onclick="openModal('income')">+ Add</button>
-      </div>
-      <div id="income-list"></div>
-      <div class="total-row">
-        <span>Total</span>
-        <span id="inc-total" style="color:var(--success)">₹0</span>
-      </div>
-    </div>
-  </div>
+const totalSpent = EXPENSES.reduce((s, e) => {
+return s + (e.cat === “variable” ? (spent[e.id] || 0) : e.amount);
+}, 0);
+const balance = INCOME - totalSpent;
+const spentPct = Math.min((totalSpent / INCOME) * 100, 100);
+const efPct = Math.min((efSaved / EF_TARGET) * 100, 100);
+const dailyLeft = Math.max(0, balance / 30);
 
-  <!-- EMERGENCY FUND TAB -->
-  <div class="tab-panel" id="tab-emergency">
-    <div class="emfund">
-      <h2>Emergency fund calculator</h2>
-      <div style="font-size:13px;color:var(--text2);margin-top:4px;">Target: <span id="em-months-val">6</span> months of expenses</div>
+const addSpend = (id, amt) => {
+setSpent(prev => ({ …prev, [id]: (prev[id] || 0) + Number(amt) }));
+};
 
-      <div class="em-slider-row">
-        <div class="em-slider-label">
-          <span>Months coverage</span>
-          <span id="em-months-display">6 months</span>
+const vw = VIEWS[preview].w;
+const isWatch = preview === “watch”;
+const isMac = preview === “mac”;
+
+// Scaling factor for watch
+const scale = isWatch ? 0.85 : 1;
+
+const WatchView = () => (
+<div style={{ width: 184, height: 224, background: “#000”, borderRadius: 44, overflow: “hidden”, display: “flex”, flexDirection: “column”, alignItems: “center”, justifyContent: “center”, padding: 16, boxSizing: “border-box”, fontFamily: “system-ui” }}>
+<div style={{ fontSize: 10, color: “#666”, letterSpacing: 1, textTransform: “uppercase”, marginBottom: 2 }}>Balance</div>
+<div style={{ fontSize: 28, fontWeight: 800, color: balance > 10000 ? “#30d158” : balance > 0 ? “#ffd60a” : “#ff453a”, lineHeight: 1 }}>{fmtK(balance)}</div>
+<div style={{ fontSize: 9, color: “#555”, marginTop: 2, marginBottom: 10 }}>of {fmtK(INCOME)} income</div>
+
+```
+  {/* Arc progress */}
+  <svg width={100} height={50} viewBox="0 0 100 50">
+    <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#222" strokeWidth={6} strokeLinecap="round" />
+    <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke={spentPct > 85 ? "#ff453a" : spentPct > 65 ? "#ffd60a" : "#30d158"} strokeWidth={6} strokeLinecap="round"
+      strokeDasharray={`${(spentPct / 100) * 125.6} 125.6`} />
+    <text x="50" y="44" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="700">{Math.round(spentPct)}%</text>
+  </svg>
+
+  <div style={{ fontSize: 9, color: "#555", marginTop: 4 }}>₹{Math.round(dailyLeft).toLocaleString("en-IN")}/day left</div>
+</div>
+```
+
+);
+
+const PhoneView = () => (
+<div style={{ width: “100%”, height: 680, background: “#0a0a0f”, borderRadius: isWatch ? 0 : 40, overflow: “hidden”, display: “flex”, flexDirection: “column”, fontFamily: “system-ui”, color: “#fff” }}>
+
+```
+  {screen === "home" && <>
+    {/* Header */}
+    <div style={{ padding: "28px 20px 16px", background: "linear-gradient(180deg, #111118 0%, #0a0a0f 100%)" }}>
+      <div style={{ fontSize: 11, color: "#555", letterSpacing: 2, textTransform: "uppercase" }}>July · Sandesh</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 6 }}>
+        <div>
+          <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: -1, color: balance > 10000 ? "#30d158" : balance > 0 ? "#ffd60a" : "#ff453a" }}>{fmt(balance)}</div>
+          <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>remaining this month</div>
         </div>
-        <input type="range" min="3" max="12" value="6" id="emMonthsSlider" oninput="updateEmergency()">
-      </div>
-      <div class="em-slider-row">
-        <div class="em-slider-label">
-          <span>Current emergency savings</span>
-          <span id="em-current-display">₹0</span>
-        </div>
-        <input type="range" min="0" max="1000000" step="5000" value="0" id="emCurrentSlider" oninput="updateEmergency()">
-      </div>
-
-      <div class="emfund-grid">
-        <div class="emfund-metric">
-          <div class="em-label">Monthly expenses</div>
-          <div class="em-value" id="em-monthly">₹0</div>
-          <div class="em-note">Auto from expenses</div>
-        </div>
-        <div class="emfund-metric">
-          <div class="em-label">Target fund</div>
-          <div class="em-value" id="em-target" style="color:var(--warning)">₹0</div>
-          <div class="em-note" id="em-target-note">6× monthly</div>
-        </div>
-        <div class="emfund-metric">
-          <div class="em-label">Current saved</div>
-          <div class="em-value" id="em-current-saved" style="color:var(--accent)">₹0</div>
-          <div class="em-note">From slider above</div>
-        </div>
-        <div class="emfund-metric">
-          <div class="em-label">Gap remaining</div>
-          <div class="em-value" id="em-gap" style="color:var(--danger)">₹0</div>
-          <div class="em-note" id="em-months-to-fill">At current savings rate</div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 13, color: "#888" }}>{fmt(INCOME)}</div>
+          <div style={{ fontSize: 10, color: "#555" }}>income</div>
         </div>
       </div>
 
-      <div id="em-insight" class="insight-box insight-warn" style="margin-top:12px;"></div>
+      {/* Thin progress bar */}
+      <div style={{ marginTop: 14, background: "#1c1c24", borderRadius: 3, height: 3 }}>
+        <div style={{ width: `${spentPct}%`, height: "100%", borderRadius: 3, background: spentPct > 85 ? "#ff453a" : spentPct > 65 ? "#ffd60a" : "#30d158", transition: "width 0.3s" }} />
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 10, color: "#444" }}>
+        <span>{fmt(totalSpent)} spent</span>
+        <span>{Math.round(spentPct)}%</span>
+      </div>
+    </div>
 
-      <div style="margin-top:14px;">
-        <h3 style="margin-bottom:10px;">Monthly contribution needed</h3>
-        <div class="em-slider-row">
-          <div class="em-slider-label">
-            <span>Timeline to reach goal</span>
-            <span id="em-timeline-display">12 months</span>
+    {/* Quick stats row */}
+    <div style={{ display: "flex", gap: 8, padding: "0 16px 12px" }}>
+      {[
+        { label: "Daily left", value: fmt(dailyLeft), color: "#60a5fa" },
+        { label: "EMIs", value: fmt(27507 + 33888), color: "#ef4444" },
+        { label: "EF", value: `${Math.round(efPct)}%`, color: efPct > 50 ? "#30d158" : "#ffd60a" },
+      ].map(s => (
+        <div key={s.label} style={{ flex: 1, background: "#111118", borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: s.color }}>{s.value}</div>
+          <div style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{s.label}</div>
+        </div>
+      ))}
+    </div>
+
+    {/* Variable expenses — log spending */}
+    <div style={{ flex: 1, overflowY: "auto", padding: "0 16px" }}>
+      <div style={{ fontSize: 10, color: "#444", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Log Today's Spend</div>
+      {EXPENSES.filter(e => e.cat === "variable").map(e => {
+        const s = spent[e.id] || 0;
+        const pct = Math.min((s / e.amount) * 100, 100);
+        const over = s > e.amount;
+        return (
+          <div key={e.id} style={{ background: "#111118", borderRadius: 12, padding: "10px 12px", marginBottom: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>{e.icon}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{e.name}</div>
+                  <div style={{ fontSize: 10, color: over ? "#ff453a" : "#555" }}>
+                    {fmt(s)} / {fmt(e.amount)} {over ? "⚠️" : ""}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => { setAddingTo(e); setAddAmt(""); setScreen("add"); }}
+                style={{ background: "#1c1c2e", border: "none", color: "#60a5fa", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer", fontWeight: 600 }}
+              >+ Add</button>
+            </div>
+            <div style={{ marginTop: 6, background: "#1c1c24", borderRadius: 2, height: 2 }}>
+              <div style={{ width: `${pct}%`, height: "100%", borderRadius: 2, background: over ? "#ff453a" : pct > 75 ? "#ffd60a" : "#30d158" }} />
+            </div>
           </div>
-          <input type="range" min="3" max="36" value="12" id="emTimelineSlider" oninput="updateEmergency()">
+        );
+      })}
+
+      {/* EF row */}
+      <div style={{ background: "#0d1a0d", border: "1px solid #1a3a1a", borderRadius: 12, padding: "10px 12px", marginBottom: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 16 }}>🛡️</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>Emergency Fund</div>
+              <div style={{ fontSize: 10, color: "#555" }}>{fmt(efSaved)} / {fmtK(EF_TARGET)}</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={() => setEfSaved(s => Math.max(0, s - 1000))} style={{ background: "#1c1c2e", border: "none", color: "#888", borderRadius: 8, padding: "6px 10px", fontSize: 12, cursor: "pointer" }}>-1k</button>
+            <button onClick={() => setEfSaved(s => s + 1000)} style={{ background: "#1c1c2e", border: "none", color: "#30d158", borderRadius: 8, padding: "6px 10px", fontSize: 12, cursor: "pointer" }}>+1k</button>
+          </div>
         </div>
-        <div style="background:var(--accent-bg);border-radius:var(--radius-sm);padding:14px 16px;margin-top:8px;">
-          <div style="font-size:12px;color:var(--accent-text);font-weight:500;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Monthly saving needed</div>
-          <div style="font-size:26px;font-weight:700;color:var(--accent-text)" id="em-monthly-needed">₹0</div>
-          <div style="font-size:12px;color:var(--accent-text);margin-top:3px;" id="em-feasibility"></div>
+        <div style={{ marginTop: 6, background: "#1c1c24", borderRadius: 2, height: 2 }}>
+          <div style={{ width: `${efPct}%`, height: "100%", borderRadius: 2, background: efPct > 50 ? "#30d158" : "#ffd60a" }} />
         </div>
+      </div>
+    </div>
+  </>}
+
+  {screen === "add" && addingTo && (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "40px 24px 24px" }}>
+      <button onClick={() => setScreen("home")} style={{ background: "none", border: "none", color: "#60a5fa", fontSize: 14, cursor: "pointer", textAlign: "left", padding: 0, marginBottom: 24 }}>← Back</button>
+      <div style={{ fontSize: 32, textAlign: "center", marginBottom: 8 }}>{addingTo.icon}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, textAlign: "center", marginBottom: 4 }}>{addingTo.name}</div>
+      <div style={{ fontSize: 12, color: "#555", textAlign: "center", marginBottom: 32 }}>
+        Spent {fmt(spent[addingTo.id] || 0)} of {fmt(addingTo.amount)}
+      </div>
+
+      {/* Quick amounts */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
+        {[100, 200, 500, 1000, 2000, 5000].map(q => (
+          <button key={q} onClick={() => setAddAmt(String(q))}
+            style={{ background: addAmt === String(q) ? "#3b82f6" : "#1c1c2e", border: "none", color: "#fff", borderRadius: 10, padding: "10px 0", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+            ₹{q >= 1000 ? q/1000 + "k" : q}
+          </button>
+        ))}
+      </div>
+
+      <input
+        type="number"
+        placeholder="Custom amount"
+        value={addAmt}
+        onChange={e => setAddAmt(e.target.value)}
+        style={{ background: "#1c1c2e", border: "1px solid #2a2a3a", borderRadius: 12, padding: "14px 16px", color: "#fff", fontSize: 18, fontWeight: 700, textAlign: "center", marginBottom: 16, outline: "none" }}
+      />
+
+      <button
+        onClick={() => { if (addAmt) { addSpend(addingTo.id, addAmt); setScreen("home"); } }}
+        style={{ background: addAmt ? "#3b82f6" : "#1c1c2e", border: "none", color: "#fff", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: addAmt ? "pointer" : "default" }}
+      >
+        Log {addAmt ? fmt(Number(addAmt)) : "amount"}
+      </button>
+    </div>
+  )}
+</div>
+```
+
+);
+
+const MacLayout = () => (
+<div style={{ display: “flex”, gap: 20, fontFamily: “system-ui”, color: “#fff”, width: “100%” }}>
+{/* Sidebar */}
+<div style={{ width: 260, background: “#0a0a0f”, borderRadius: 16, padding: 20, flexShrink: 0 }}>
+<div style={{ fontSize: 11, color: “#555”, letterSpacing: 2, textTransform: “uppercase”, marginBottom: 4 }}>July 2025</div>
+<div style={{ fontSize: 32, fontWeight: 800, color: balance > 10000 ? “#30d158” : balance > 0 ? “#ffd60a” : “#ff453a”, letterSpacing: -1 }}>{fmt(balance)}</div>
+<div style={{ fontSize: 12, color: “#555” }}>remaining</div>
+
+```
+    <div style={{ margin: "16px 0", background: "#1c1c24", borderRadius: 3, height: 4 }}>
+      <div style={{ width: `${spentPct}%`, height: "100%", borderRadius: 3, background: spentPct > 85 ? "#ff453a" : spentPct > 65 ? "#ffd60a" : "#30d158" }} />
+    </div>
+
+    {[
+      { label: "Income", value: fmt(INCOME), color: "#30d158" },
+      { label: "Spent", value: fmt(totalSpent), color: "#ef4444" },
+      { label: "Daily budget", value: fmt(dailyLeft) + "/day", color: "#60a5fa" },
+    ].map(s => (
+      <div key={s.label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #111" }}>
+        <span style={{ fontSize: 13, color: "#666" }}>{s.label}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: s.color }}>{s.value}</span>
+      </div>
+    ))}
+
+    {/* EF in sidebar */}
+    <div style={{ marginTop: 16, background: "#0d1a0d", borderRadius: 12, padding: 12 }}>
+      <div style={{ fontSize: 11, color: "#2d6a2d", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>🛡️ Emergency Fund</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: "#30d158" }}>{fmt(efSaved)}</div>
+      <div style={{ fontSize: 10, color: "#555" }}>of {fmtK(EF_TARGET)} target ({Math.round(efPct)}%)</div>
+      <div style={{ margin: "8px 0", background: "#1c1c24", borderRadius: 2, height: 3 }}>
+        <div style={{ width: `${efPct}%`, height: "100%", borderRadius: 2, background: efPct > 50 ? "#30d158" : "#ffd60a" }} />
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        <button onClick={() => setEfSaved(s => Math.max(0, s - 1000))} style={{ flex: 1, background: "#1c1c2e", border: "none", color: "#888", borderRadius: 6, padding: "5px 0", fontSize: 11, cursor: "pointer" }}>-₹1k</button>
+        <button onClick={() => setEfSaved(s => s + 1000)} style={{ flex: 1, background: "#1a3a1a", border: "none", color: "#30d158", borderRadius: 6, padding: "5px 0", fontSize: 11, cursor: "pointer" }}>+₹1k</button>
       </div>
     </div>
   </div>
-</div>
 
-<!-- Add Expense Modal -->
-<div class="modal-overlay" id="expense-modal" onclick="closeModal(event,'expense-modal')">
-  <div class="modal" onclick="event.stopPropagation()">
-    <h2 id="expense-modal-title">Add expense</h2>
-    <input type="hidden" id="expense-edit-id">
-    <div class="form-group">
-      <label>Name</label>
-      <input type="text" id="exp-name" placeholder="e.g. SBI EMI">
+  {/* Main grid */}
+  <div style={{ flex: 1 }}>
+    {/* Fixed costs */}
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 10, color: "#444", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Fixed This Month</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+        {EXPENSES.filter(e => e.cat !== "variable").map(e => (
+          <div key={e.id} style={{ background: "#0a0a0f", borderRadius: 12, padding: 12 }}>
+            <div style={{ display: "flex", justify: "space-between", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 16 }}>{e.icon}</span>
+              <div>
+                <div style={{ fontSize: 11, color: "#666" }}>{e.name}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#ef4444" }}>{fmt(e.amount)}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
-    <div class="form-group">
-      <label>Amount (₹)</label>
-      <input type="number" id="exp-amount" placeholder="0">
-    </div>
-    <div class="form-group">
-      <label>Category</label>
-      <select id="exp-cat">
-        <option value="emi">EMI / Loan</option>
-        <option value="rent">Rent</option>
-        <option value="utilities">Utilities</option>
-        <option value="food">Food</option>
-        <option value="transport">Transport</option>
-        <option value="insurance">Insurance</option>
-        <option value="family">Family</option>
-        <option value="subscriptions">Subscriptions</option>
-        <option value="savings">Savings</option>
-        <option value="other">Other</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Type</label>
-      <select id="exp-type">
-        <option value="fixed">Fixed (same every month)</option>
-        <option value="variable">Variable</option>
-      </select>
-    </div>
-    <div class="modal-btns">
-      <button class="btn-secondary" onclick="document.getElementById('expense-modal').classList.remove('open')">Cancel</button>
-      <button class="btn-primary" onclick="saveExpense()">Save</button>
+
+    {/* Variable — log grid */}
+    <div>
+      <div style={{ fontSize: 10, color: "#444", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Track Variable Spend</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+        {EXPENSES.filter(e => e.cat === "variable").map(e => {
+          const s = spent[e.id] || 0;
+          const pct = Math.min((s / e.amount) * 100, 100);
+          const over = s > e.amount;
+          return (
+            <div key={e.id} style={{ background: "#0a0a0f", borderRadius: 12, padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>{e.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{e.name}</div>
+                    <div style={{ fontSize: 11, color: over ? "#ff453a" : "#555" }}>{fmt(s)} / {fmt(e.amount)}</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {[100, 500].map(q => (
+                    <button key={q} onClick={() => addSpend(e.id, q)}
+                      style={{ background: "#1c1c2e", border: "none", color: "#60a5fa", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
+                      +{q >= 1000 ? q/1000 + "k" : q}
+                    </button>
+                  ))}
+                  <button onClick={() => { setAddingTo(e); setAddAmt(""); setScreen("add"); }}
+                    style={{ background: "#1c2a3a", border: "none", color: "#60a5fa", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>...</button>
+                </div>
+              </div>
+              <div style={{ background: "#1c1c24", borderRadius: 2, height: 3 }}>
+                <div style={{ width: `${pct}%`, height: "100%", borderRadius: 2, background: over ? "#ff453a" : pct > 75 ? "#ffd60a" : "#30d158" }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   </div>
+
+  {/* Add panel overlay */}
+  {screen === "add" && addingTo && (
+    <div style={{ position: "absolute", inset: 0, background: "#000000cc", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 16, zIndex: 10 }}>
+      <div style={{ background: "#111118", borderRadius: 20, padding: 32, width: 320 }}>
+        <div style={{ fontSize: 32, textAlign: "center" }}>{addingTo.icon}</div>
+        <div style={{ fontSize: 18, fontWeight: 700, textAlign: "center", marginBottom: 4, color: "#fff" }}>{addingTo.name}</div>
+        <div style={{ fontSize: 12, color: "#555", textAlign: "center", marginBottom: 24 }}>Spent {fmt(spent[addingTo.id] || 0)} of {fmt(addingTo.amount)}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+          {[100, 200, 500, 1000, 2000, 5000].map(q => (
+            <button key={q} onClick={() => setAddAmt(String(q))}
+              style={{ background: addAmt === String(q) ? "#3b82f6" : "#1c1c2e", border: "none", color: "#fff", borderRadius: 10, padding: "10px 0", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              ₹{q >= 1000 ? q/1000 + "k" : q}
+            </button>
+          ))}
+        </div>
+        <input type="number" placeholder="Custom ₹" value={addAmt} onChange={e => setAddAmt(e.target.value)}
+          style={{ width: "100%", background: "#1c1c2e", border: "1px solid #2a2a3a", borderRadius: 10, padding: "12px", color: "#fff", fontSize: 16, textAlign: "center", marginBottom: 12, boxSizing: "border-box", outline: "none" }} />
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => { setScreen("home"); setAddingTo(null); }}
+            style={{ flex: 1, background: "#1c1c2e", border: "none", color: "#888", borderRadius: 12, padding: 14, fontSize: 14, cursor: "pointer" }}>Cancel</button>
+          <button onClick={() => { if (addAmt) { addSpend(addingTo.id, addAmt); setScreen("home"); setAddingTo(null); } }}
+            style={{ flex: 1, background: addAmt ? "#3b82f6" : "#1c1c2e", border: "none", color: "#fff", borderRadius: 12, padding: 14, fontSize: 14, fontWeight: 700, cursor: addAmt ? "pointer" : "default" }}>
+            Log {addAmt ? fmt(Number(addAmt)) : ""}
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+```
+
+);
+
+return (
+<div style={{ background: “#050508”, minHeight: “100vh”, padding: 24, fontFamily: “system-ui” }}>
+{/* Device preview switcher */}
+<div style={{ display: “flex”, gap: 8, justifyContent: “center”, marginBottom: 24, flexWrap: “wrap” }}>
+{Object.entries(VIEWS).map(([key, v]) => (
+<button key={key} onClick={() => { setPreview(key); setScreen(“home”); }}
+style={{ background: preview === key ? “#3b82f6” : “#111118”, border: “none”, color: preview === key ? “#fff” : “#666”, borderRadius: 20, padding: “6px 14px”, fontSize: 12, fontWeight: 600, cursor: “pointer” }}>
+{v.label}
+</button>
+))}
 </div>
 
-<!-- Add Income Modal -->
-<div class="modal-overlay" id="income-modal" onclick="closeModal(event,'income-modal')">
-  <div class="modal" onclick="event.stopPropagation()">
-    <h2 id="income-modal-title">Add income</h2>
-    <input type="hidden" id="income-edit-id">
-    <div class="form-group">
-      <label>Source</label>
-      <input type="text" id="inc-name" placeholder="e.g. Salary">
-    </div>
-    <div class="form-group">
-      <label>Amount (₹)</label>
-      <input type="number" id="inc-amount" placeholder="0">
-    </div>
-    <div class="modal-btns">
-      <button class="btn-secondary" onclick="document.getElementById('income-modal').classList.remove('open')">Cancel</button>
-      <button class="btn-primary" onclick="saveIncome()">Save</button>
-    </div>
+```
+  {/* Preview frame */}
+  <div style={{ display: "flex", justifyContent: "center" }}>
+    {isWatch ? (
+      <div style={{ position: "relative" }}>
+        {/* Watch body */}
+        <div style={{ width: 184, background: "#111", borderRadius: 44, padding: 12, boxShadow: "0 0 0 3px #222, 0 20px 60px #000" }}>
+          <WatchView />
+        </div>
+        {/* Watch band stubs */}
+        <div style={{ position: "absolute", top: -32, left: 30, width: 124, height: 36, background: "#1a1a1a", borderRadius: "6px 6px 0 0" }} />
+        <div style={{ position: "absolute", bottom: -32, left: 30, width: 124, height: 36, background: "#1a1a1a", borderRadius: "0 0 6px 6px" }} />
+      </div>
+    ) : isMac ? (
+      <div style={{ width: "100%", maxWidth: 960, background: "#111", borderRadius: 12, padding: 20, boxShadow: "0 20px 60px #000", position: "relative" }}>
+        <MacLayout />
+      </div>
+    ) : (
+      <div style={{ width: preview === "tablet" ? 480 : 320, background: "#111", borderRadius: preview === "tablet" ? 24 : 40, padding: preview === "tablet" ? "14px" : "10px", boxShadow: "0 20px 60px #000" }}>
+        <PhoneView />
+      </div>
+    )}
   </div>
+
+  <p style={{ textAlign: "center", fontSize: 11, color: "#333", marginTop: 24 }}>
+    In a native app, data syncs via iCloud across all your Apple devices automatically.
+  </p>
 </div>
+```
 
-<script>
-const ICONS = {
-  emi: '🏦', rent: '🏠', utilities: '💡', food: '🍱', transport: '⛽',
-  insurance: '🛡️', family: '👨‍👩‍👧', subscriptions: '📱', savings: '💎', other: '💼'
-};
-const LABELS = {
-  emi: 'EMI / Loan', rent: 'Rent', utilities: 'Utilities', food: 'Food',
-  transport: 'Transport', insurance: 'Insurance', family: 'Family',
-  subscriptions: 'Subscriptions', savings: 'Savings', other: 'Other'
-};
-
-let data = {
-  expenses: [
-    { id:1, name:'SBI EMI', amount:27507, cat:'emi', type:'fixed' },
-    { id:2, name:'HDFC EMI', amount:33888, cat:'emi', type:'fixed' },
-    { id:3, name:'Rent', amount:6800, cat:'rent', type:'fixed' },
-    { id:4, name:'Sabari', amount:1287, cat:'food', type:'variable' },
-    { id:5, name:'Light bill', amount:600, cat:'utilities', type:'fixed' },
-    { id:6, name:'Petrol', amount:1500, cat:'transport', type:'variable' },
-    { id:7, name:'Insurance', amount:5100, cat:'insurance', type:'fixed' },
-    { id:8, name:'Parents', amount:16000, cat:'family', type:'fixed' },
-    { id:9, name:'ChatGPT / Subscriptions', amount:25000, cat:'subscriptions', type:'fixed' },
-    { id:10, name:'Savings', amount:4000, cat:'savings', type:'fixed' },
-  ],
-  income: [
-    { id:1, name:'Salary', amount:118944 }
-  ],
-  nextExpId: 11,
-  nextIncId: 2
-};
-
-try {
-  const saved = localStorage.getItem('budgetData');
-  if (saved) data = JSON.parse(saved);
-} catch(e) {}
-
-function save() {
-  try { localStorage.setItem('budgetData', JSON.stringify(data)); } catch(e) {}
+);
 }
-
-function fmt(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
-
-function totalExpenses() { return data.expenses.filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0); }
-function totalSavings() { return data.expenses.filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0); }
-function totalIncome() { return data.income.reduce((a,i)=>a+i.amount,0); }
-
-function switchTab(name) {
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('tab-'+name).classList.add('active');
-  event.target.classList.add('active');
-  renderAll();
-}
-
-function openModal(type, id) {
-  if(type==='expense') {
-    document.getElementById('expense-modal-title').textContent = id ? 'Edit expense' : 'Add expense';
-    document.getElementById('expense-edit-id').value = id || '';
-    if(id) {
-      const e = data.expenses.find(x=>x.id===id);
-      document.getElementById('exp-name').value = e.name;
-      document.getElementById('exp-amount').value = e.amount;
-      document.getElementById('exp-cat').value = e.cat;
-      document.getElementById('exp-type').value = e.type;
-    } else {
-      document.getElementById('exp-name').value='';
-      document.getElementById('exp-amount').value='';
-      document.getElementById('exp-cat').value='emi';
-      document.getElementById('exp-type').value='fixed';
-    }
-    document.getElementById('expense-modal').classList.add('open');
-    document.getElementById('exp-name').focus();
-  } else {
-    document.getElementById('income-modal-title').textContent = id ? 'Edit income' : 'Add income';
-    document.getElementById('income-edit-id').value = id || '';
-    if(id) {
-      const i = data.income.find(x=>x.id===id);
-      document.getElementById('inc-name').value = i.name;
-      document.getElementById('inc-amount').value = i.amount;
-    } else {
-      document.getElementById('inc-name').value='';
-      document.getElementById('inc-amount').value='';
-    }
-    document.getElementById('income-modal').classList.add('open');
-    document.getElementById('inc-name').focus();
-  }
-}
-
-function closeModal(event, id) {
-  document.getElementById(id).classList.remove('open');
-}
-
-function saveExpense() {
-  const name = document.getElementById('exp-name').value.trim();
-  const amount = parseFloat(document.getElementById('exp-amount').value);
-  const cat = document.getElementById('exp-cat').value;
-  const type = document.getElementById('exp-type').value;
-  if(!name || isNaN(amount)) return alert('Please fill in name and amount');
-  const editId = document.getElementById('expense-edit-id').value;
-  if(editId) {
-    const e = data.expenses.find(x=>x.id===parseInt(editId));
-    Object.assign(e, {name,amount,cat,type});
-  } else {
-    data.expenses.push({id:data.nextExpId++,name,amount,cat,type});
-  }
-  save();
-  document.getElementById('expense-modal').classList.remove('open');
-  renderAll();
-}
-
-function saveIncome() {
-  const name = document.getElementById('inc-name').value.trim();
-  const amount = parseFloat(document.getElementById('inc-amount').value);
-  if(!name || isNaN(amount)) return alert('Please fill in source and amount');
-  const editId = document.getElementById('income-edit-id').value;
-  if(editId) {
-    const i = data.income.find(x=>x.id===parseInt(editId));
-    Object.assign(i, {name,amount});
-  } else {
-    data.income.push({id:data.nextIncId++,name,amount});
-  }
-  save();
-  document.getElementById('income-modal').classList.remove('open');
-  renderAll();
-}
-
-function deleteExpense(id) {
-  if(!confirm('Delete this expense?')) return;
-  data.expenses = data.expenses.filter(e=>e.id!==id);
-  save(); renderAll();
-}
-
-function deleteIncome(id) {
-  if(!confirm('Delete this income?')) return;
-  data.income = data.income.filter(i=>i.id!==id);
-  save(); renderAll();
-}
-
-function renderExpenses() {
-  const list = document.getElementById('expense-list');
-  if(!list) return;
-  list.innerHTML = data.expenses.map(e=>`
-    <div class="expense-row">
-      <div class="expense-icon" style="background:var(--surface2)">${ICONS[e.cat]||'💰'}</div>
-      <div class="expense-info">
-        <div class="expense-name">${e.name}</div>
-        <div style="display:flex;gap:5px;margin-top:3px;">
-          <span class="tag tag-${e.cat==='emi'?'emi':e.cat==='savings'?'saving':e.type}">${LABELS[e.cat]}</span>
-          <span class="tag" style="background:var(--surface2);color:var(--text3)">${e.type}</span>
-        </div>
-      </div>
-      <div class="expense-amount">${fmt(e.amount)}</div>
-      <div class="expense-actions">
-        <button class="icon-btn" onclick="openModal('expense',${e.id})">✏️</button>
-        <button class="icon-btn" onclick="deleteExpense(${e.id})">🗑</button>
-      </div>
-    </div>
-  `).join('');
-  const total = data.expenses.reduce((a,e)=>a+e.amount,0);
-  document.getElementById('exp-total').textContent = fmt(total);
-}
-
-function renderIncome() {
-  const list = document.getElementById('income-list');
-  if(!list) return;
-  list.innerHTML = data.income.map(i=>`
-    <div class="income-row">
-      <div class="expense-icon" style="background:var(--success-bg)">💼</div>
-      <div class="expense-info">
-        <div class="expense-name">${i.name}</div>
-      </div>
-      <div class="income-amount">${fmt(i.amount)}</div>
-      <div class="expense-actions">
-        <button class="icon-btn" onclick="openModal('income',${i.id})">✏️</button>
-        <button class="icon-btn" onclick="deleteIncome(${i.id})">🗑</button>
-      </div>
-    </div>
-  `).join('');
-  document.getElementById('inc-total').textContent = fmt(totalIncome());
-}
-
-function renderOverview() {
-  const income = totalIncome();
-  const expenses = totalExpenses();
-  const savings = totalSavings();
-  const total = expenses + savings;
-  const balance = income - total;
-  const pct = income > 0 ? Math.round((total/income)*100) : 0;
-  const savingsPct = income > 0 ? Math.round((savings/income)*100) : 0;
-
-  document.getElementById('ov-income').textContent = fmt(income);
-  document.getElementById('ov-expenses').textContent = fmt(expenses);
-  document.getElementById('ov-savings').textContent = fmt(savings);
-  document.getElementById('ov-savings-pct').textContent = savingsPct+'% of income';
-  document.getElementById('ov-balance').textContent = fmt(balance);
-  document.getElementById('ov-balance-note').textContent = balance>=0 ? 'Surplus 🎉' : 'Deficit ⚠️';
-
-  const fill = document.getElementById('ov-progress-fill');
-  fill.style.width = Math.min(pct,100)+'%';
-  fill.className = 'progress-fill '+(pct<75?'progress-ok':pct<100?'progress-warn':'progress-over');
-  document.getElementById('ov-pct-label').textContent = pct+'%';
-  document.getElementById('ov-progress-right').textContent = fmt(Math.max(0,income-total))+' remaining';
-
-  const insight = document.getElementById('ov-insight');
-  if(balance<0) {
-    insight.className='insight-box insight-danger';
-    insight.textContent = `⚠️ You are overspending by ${fmt(Math.abs(balance))} this month. Consider reducing variable expenses.`;
-  } else if(savingsPct < 15) {
-    insight.className='insight-box insight-warn';
-    insight.textContent = `💡 Saving ${savingsPct}% of income. Financial experts recommend saving at least 20%. Try to increase savings by ${fmt(income*0.2-savings)}/month.`;
-  } else {
-    insight.className='insight-box insight-ok';
-    insight.textContent = `✅ Great! You're saving ${savingsPct}% of your income (${fmt(savings)}/month). Balance after all expenses: ${fmt(balance)}.`;
-  }
-
-  // Breakdown by category
-  const byCategory = {};
-  data.expenses.forEach(e=>{
-    byCategory[e.cat] = (byCategory[e.cat]||0)+e.amount;
-  });
-  const sortedCats = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]);
-  const breakdown = document.getElementById('breakdown-list');
-  breakdown.innerHTML = sortedCats.map(([cat,amt])=>{
-    const pctCat = total>0 ? Math.round((amt/total)*100) : 0;
-    return `<div class="expense-row">
-      <div class="expense-icon" style="background:var(--surface2)">${ICONS[cat]||'💰'}</div>
-      <div class="expense-info">
-        <div class="expense-name">${LABELS[cat]||cat}</div>
-        <div class="progress-bar" style="height:5px;margin-top:5px;background:var(--bg)">
-          <div class="progress-fill progress-ok" style="width:${pctCat}%;background:var(--accent)"></div>
-        </div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:14px;font-weight:600">${fmt(amt)}</div>
-        <div style="font-size:12px;color:var(--text3)">${pctCat}%</div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function updateEmergency() {
-  const months = parseInt(document.getElementById('emMonthsSlider').value);
-  const current = parseInt(document.getElementById('emCurrentSlider').value);
-  const timeline = parseInt(document.getElementById('emTimelineSlider').value);
-  const monthly = totalExpenses() + totalSavings();
-  const target = monthly * months;
-  const gap = Math.max(0, target - current);
-  const needed = gap > 0 ? Math.ceil(gap/timeline) : 0;
-  const income = totalIncome();
-  const freeAfterExp = income - (totalExpenses()+totalSavings());
-  const feasible = needed <= freeAfterExp;
-
-  document.getElementById('em-months-val').textContent = months;
-  document.getElementById('em-months-display').textContent = months+' months';
-  document.getElementById('em-current-display').textContent = fmt(current);
-  document.getElementById('em-timeline-display').textContent = timeline+' months';
-  document.getElementById('em-monthly').textContent = fmt(monthly);
-  document.getElementById('em-target').textContent = fmt(target);
-  document.getElementById('em-target-note').textContent = months+'× monthly';
-  document.getElementById('em-current-saved').textContent = fmt(current);
-  document.getElementById('em-gap').textContent = fmt(gap);
-  document.getElementById('em-monthly-needed').textContent = fmt(needed);
-
-  const monthsToFill = needed > 0 ? Math.ceil(gap/needed) : 0;
-  document.getElementById('em-months-to-fill').textContent = gap>0 ? `${monthsToFill} months to fill` : 'Goal reached! 🎉';
-
-  const feasibility = document.getElementById('em-feasibility');
-  if(needed===0) {
-    feasibility.textContent = '🎉 Emergency fund fully funded!';
-  } else if(feasible) {
-    feasibility.textContent = `✅ Feasible — you have ${fmt(freeAfterExp)} available after expenses`;
-  } else {
-    feasibility.textContent = `⚠️ Tight — only ${fmt(freeAfterExp)} available; consider a longer timeline`;
-  }
-
-  const insight = document.getElementById('em-insight');
-  if(current===0) {
-    insight.className='insight-box insight-danger';
-    insight.textContent = `🚨 No emergency fund detected. Start with a goal of ${fmt(monthly*3)} (3 months) and build to ${fmt(target)}.`;
-  } else if(current < target*0.5) {
-    insight.className='insight-box insight-warn';
-    insight.textContent = `📈 Emergency fund is ${Math.round(current/target*100)}% funded. You're ${fmt(gap)} away from your ${months}-month target.`;
-  } else if(current < target) {
-    insight.className='insight-box insight-warn';
-    insight.textContent = `🟡 Almost there! ${fmt(gap)} more to reach your ${months}-month emergency fund. Keep going!`;
-  } else {
-    insight.className='insight-box insight-ok';
-    insight.textContent = `✅ Emergency fund fully funded at ${fmt(current)}! Consider investing the surplus.`;
-  }
-}
-
-function renderAll() {
-  renderOverview();
-  renderExpenses();
-  renderIncome();
-  updateEmergency();
-}
-
-renderAll();
-</script>
-</body>
-</html>
