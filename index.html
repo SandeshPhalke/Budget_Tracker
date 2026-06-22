@@ -377,8 +377,8 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
       <button class="btn btn-ghost btn-block" onclick="goTo('signup')">Create an account</button>
 
       <div class="mock-banner" style="margin-top:20px;">
-        <span>ⓘ</span>
-        <span>Accounts and PINs are stored only on this device's browser — there's no server, so nothing leaves your device. Bank connections later in the app are simulated for demo purposes.</span>
+        <span>☁️</span>
+        <span>Your data syncs across all your devices — phone, tablet, laptop. Sign in with the same name and PIN anywhere. Bank connections are simulated for demo purposes.</span>
       </div>
     </div>
   </div>
@@ -389,7 +389,7 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
   <div class="auth-wrap">
     <div class="auth-card">
       <div class="auth-title">Create your account</div>
-      <div class="auth-sub">Your name and PIN unlock your budget on this device. Nothing is sent anywhere.</div>
+      <div class="auth-sub">Your name and PIN are stored securely in the cloud — sign in from any device, anytime.</div>
 
       <div class="field">
         <label>Your name</label>
@@ -538,6 +538,7 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
           </select>
         </div>
         <div class="icon-pill" onclick="openModal('settings')" title="Settings">⚙️</div>
+        <div class="icon-pill" onclick="syncFromCloud()" title="Sync latest data">🔄</div>
       </div>
     </div>
 
@@ -727,12 +728,17 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
 <div id="modal-root"></div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================
-   HEARTH — Family Budget Tracker (demo build)
-   All data is local (localStorage). Auth + bank linking are
-   simulated; no real network calls are made.
+   HEARTH — Family Budget Tracker
+   Cross-device sync via Supabase. All data lives in the cloud.
    ============================================================ */
+
+/* ── Supabase client ── */
+const SUPA_URL = 'https://lsyrynzkmyludtaeshnx.supabase.co';
+const SUPA_KEY = 'sb_publishable_uA8YnxsEeZpwxfNL1DKhFQ_kZ-6B1n4';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 const ICONS = {
   emi: '🏦', rent: '🏠', utilities: '💡', food: '🍱', transport: '⛽',
@@ -771,27 +777,65 @@ function todayKey(){ return new Date().toISOString().slice(0,7); }
 /* ============================================================
    STORE — everything persisted under one root key
    ============================================================ */
-const STORE_KEY = 'hearth_budget_v2';
+/* ============================================================
+   STORE — in-memory DB object, synced to Supabase
+   Structure mirrors the original for zero UI changes.
+   ============================================================ */
+let DB = { users: {}, households: {}, session: null };
 
-function loadStore(){
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (raw) return JSON.parse(raw);
-    // migrate away cleanly from old OTP-based store if present
-    const old = localStorage.getItem('hearth_budget_v1');
-    if (old) localStorage.removeItem('hearth_budget_v1');
-  } catch(e){}
-  return { users: {}, households: {}, session: null };
+/* Local session persistence (just the session userId, not data) */
+function saveSession(uid){ try { localStorage.setItem('hearth_session', uid||''); } catch(e){} }
+function loadSession(){ try { return localStorage.getItem('hearth_session')||null; } catch(e){return null;} }
+
+/* Save the whole DB snapshot to Supabase's key-value store (households table) */
+async function saveStore(){
+  if (!DB.session) return;
+  const hh = currentHousehold();
+  if (!hh) return;
+  await supa.from('households').upsert({
+    id: hh.id,
+    invite_code: hh.inviteCode,
+    name: hh.name,
+    member_ids: hh.memberIds,
+    data: hh.data
+  });
+  // persist user profile
+  const u = currentUser();
+  await supa.from('users').upsert({
+    id: u.id,
+    name: u.name,
+    pin_hash: u.pinHash,
+    color: u.color,
+    household_id: u.householdId
+  });
 }
-function saveStore(){
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); } catch(e){}
+
+/* Reload household data from Supabase into DB */
+async function refreshFromCloud(){
+  const u = currentUser();
+  if (!u || !u.householdId) return;
+  const { data, error } = await supa.from('households').select('*').eq('id', u.householdId).single();
+  if (!error && data) {
+    DB.households[data.id] = {
+      id: data.id,
+      name: data.name,
+      inviteCode: data.invite_code,
+      memberIds: data.member_ids,
+      data: data.data || {}
+    };
+    // also pull all household members' profiles
+    const { data: members } = await supa.from('users').select('*').in('id', data.member_ids);
+    if (members) {
+      members.forEach(m => {
+        DB.users[m.id] = { id: m.id, name: m.name, pinHash: m.pin_hash, color: m.color, householdId: m.household_id };
+      });
+    }
+  }
 }
-let DB = loadStore();
 
 /* ============================================================
-   AUTH FLOW — local PIN-based accounts (no server, no network).
-   PINs are hashed with SHA-256 before being stored; the raw PIN
-   is never written to localStorage.
+   AUTH FLOW — PIN-based, verified against Supabase users table.
+   PINs are SHA-256 hashed; raw PIN never stored.
    ============================================================ */
 
 function goTo(screenName){
@@ -812,14 +856,15 @@ async function hashPin(pin){
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
-function populateSignInProfiles(){
+async function populateSignInProfiles(){
   const sel = document.getElementById('si-user-select');
-  const users = Object.values(DB.users);
-  if (!users.length) {
-    sel.innerHTML = `<option value="">No profiles yet — create an account</option>`;
+  sel.innerHTML = `<option value="">Loading…</option>`;
+  const { data } = await supa.from('users').select('id, name').order('name');
+  if (!data || !data.length) {
+    sel.innerHTML = `<option value="">No accounts yet — create one</option>`;
     return;
   }
-  sel.innerHTML = users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+  sel.innerHTML = data.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
 }
 
 async function signUp(){
@@ -831,16 +876,21 @@ async function signUp(){
   if (!/^\d{4,6}$/.test(pin)) return showToast('PIN must be 4–6 digits');
   if (pin !== pin2) return showToast("PINs don't match");
 
-  const existing = Object.values(DB.users).find(u => u.name.toLowerCase() === name.toLowerCase());
-  if (existing) return showToast('That name is already taken on this device — try signing in');
+  showToast('Creating account…');
+  // Check name uniqueness across ALL devices
+  const { data: existing } = await supa.from('users').select('id').ilike('name', name).single();
+  if (existing) return showToast('That name is already taken — try signing in');
 
   const pinHash = await hashPin(pin);
   const newId = uid();
-  DB.users[newId] = {
-    id: newId, name, pinHash, color: 'mint', householdId: null
-  };
+  const { error } = await supa.from('users').insert({
+    id: newId, name, pin_hash: pinHash, color: 'mint', household_id: null
+  });
+  if (error) return showToast('Error creating account: ' + error.message);
+
+  DB.users[newId] = { id: newId, name, pinHash, color: 'mint', householdId: null };
   DB.session = newId;
-  saveStore();
+  saveSession(newId);
 
   document.getElementById('su-name').value = '';
   document.getElementById('su-pin').value = '';
@@ -855,16 +905,25 @@ async function signIn(){
   if (!userId) return showToast('Choose a profile');
   if (!pin) return showToast('Enter your PIN');
 
-  const user = DB.users[userId];
-  const pinHash = await hashPin(pin);
-  if (pinHash !== user.pinHash) return showToast('Incorrect PIN');
+  showToast('Signing in…');
+  const { data: user, error } = await supa.from('users').select('*').eq('id', userId).single();
+  if (error || !user) return showToast('User not found');
 
-  DB.session = userId;
-  saveStore();
+  const pinHash = await hashPin(pin);
+  if (pinHash !== user.pin_hash) return showToast('Incorrect PIN');
+
+  DB.users[user.id] = { id: user.id, name: user.name, pinHash: user.pin_hash, color: user.color, householdId: user.household_id };
+  DB.session = user.id;
+  saveSession(user.id);
   document.getElementById('si-pin').value = '';
 
-  if (!user.householdId) goTo('household');
-  else enterApp();
+  if (!user.household_id) {
+    goTo('household');
+  } else {
+    showToast('Loading your data…');
+    await refreshFromCloud();
+    enterApp();
+  }
 }
 
 /* ============================================================
@@ -884,34 +943,49 @@ function genInviteCode(name){
   return base + '-' + uid().toUpperCase().slice(0,4);
 }
 
-function createHousehold(){
+async function createHousehold(){
   const name = document.getElementById('hh-name').value.trim();
   if (!name) return showToast('Give your household a name');
   const color = document.querySelector('#hh-color-pick .pill-opt.sel').dataset.color;
 
+  showToast('Creating household…');
   const hhId = uid();
   const inviteCode = genInviteCode(name);
-  DB.households[hhId] = {
-    id: hhId, name, inviteCode, memberIds: [DB.session],
-    data: {} // per-month data lives here, keyed by month
-  };
+  const hhObj = { id: hhId, name, inviteCode, memberIds: [DB.session], data: {} };
+
+  const { error } = await supa.from('households').insert({
+    id: hhId, name, invite_code: inviteCode, member_ids: [DB.session], data: {}
+  });
+  if (error) return showToast('Error: ' + error.message);
+
+  DB.households[hhId] = hhObj;
   DB.users[DB.session].householdId = hhId;
   DB.users[DB.session].color = color;
-  saveStore();
+
+  await supa.from('users').update({ household_id: hhId, color }).eq('id', DB.session);
   enterApp();
 }
 
-function joinHousehold(){
+async function joinHousehold(){
   const code = document.getElementById('join-code').value.trim().toUpperCase();
   if (!code) return showToast('Enter an invite code');
   const color = document.querySelector('#join-color-pick .pill-opt.sel').dataset.color;
-  const hh = Object.values(DB.households).find(h => h.inviteCode === code);
-  if (!hh) return showToast('No household found with that code');
 
-  if (!hh.memberIds.includes(DB.session)) hh.memberIds.push(DB.session);
+  showToast('Looking up household…');
+  const { data: hh, error } = await supa.from('households').select('*').eq('invite_code', code).single();
+  if (error || !hh) return showToast('No household found with that code');
+
+  const memberIds = hh.member_ids || [];
+  if (!memberIds.includes(DB.session)) memberIds.push(DB.session);
+
+  await supa.from('households').update({ member_ids: memberIds }).eq('id', hh.id);
+  await supa.from('users').update({ household_id: hh.id, color }).eq('id', DB.session);
+
+  DB.households[hh.id] = { id: hh.id, name: hh.name, inviteCode: hh.invite_code, memberIds, data: hh.data || {} };
   DB.users[DB.session].householdId = hh.id;
   DB.users[DB.session].color = color;
-  saveStore();
+
+  await refreshFromCloud();
   enterApp();
 }
 
@@ -931,8 +1005,7 @@ function copyInvite(){
 function currentUser(){ return DB.users[DB.session]; }
 function currentHousehold(){ return DB.households[currentUser().householdId]; }
 
-window.__currentMonth = todayKey().slice(5,7); // not used directly; we track by select label+rollover index
-let monthIndex = new Date().getMonth(); // 0-11, drives rollover chain
+let monthIndex = new Date().getMonth(); // 0-11
 
 function monthDataFor(hh, mIdx, userId){
   const mKey = 'm' + mIdx;
@@ -955,9 +1028,9 @@ function myData(){
   return monthDataFor(currentHousehold(), monthIndex, DB.session);
 }
 
-function seedDemoData(){
+async function seedDemoData(){
   const d = myData();
-  if (d.expenses.length || d.income.length) return; // already has data
+  if (d.expenses.length || d.income.length) return;
   d.expenses = [
     { id: d.nextExpId++, name:'SBI EMI', amount:27507, cat:'emi', type:'fixed', paidBy: DB.session },
     { id: d.nextExpId++, name:'HDFC EMI', amount:33888, cat:'emi', type:'fixed', paidBy: DB.session },
@@ -970,8 +1043,8 @@ function seedDemoData(){
     { id: d.nextExpId++, name:'Subscriptions', amount:2500, cat:'subscriptions', type:'fixed', paidBy: DB.session },
     { id: d.nextExpId++, name:'Savings', amount:4000, cat:'savings', type:'fixed', paidBy: DB.session },
   ];
-  d.income = [ { id: d.nextIncId++, name:'Salary', amount:118944, paidBy: DB.session } ];
-  saveStore();
+  d.income = [{ id: d.nextIncId++, name:'Salary', amount:118944, paidBy: DB.session }];
+  await saveStore();
 }
 
 /* ============================================================
@@ -981,7 +1054,7 @@ function applyRolloverIfNeeded(){
   const hh = currentHousehold();
   const d = myData();
   if (d.rolloverApplied) return null;
-  if (monthIndex === 0) { d.rolloverApplied = true; return null; } // nothing before Jan in this model
+  if (monthIndex === 0) { d.rolloverApplied = true; return null; }
 
   const prev = monthDataFor(hh, monthIndex - 1, DB.session);
   const prevIncome = prev.income.reduce((a,i)=>a+i.amount,0);
@@ -993,7 +1066,7 @@ function applyRolloverIfNeeded(){
   if (prevLeftover > 0 && (prev.income.length || prev.expenses.length)) {
     d.rolloverAmount = prevLeftover;
     d.rolloverConsumed = false;
-    saveStore();
+    saveStore(); // fire-and-forget async
     return prevLeftover;
   }
   saveStore();
@@ -1013,11 +1086,11 @@ function renderRolloverBanner(amount){
     </div>`;
 }
 
-function addRolloverToSavings(amount){
+async function addRolloverToSavings(amount){
   const d = myData();
   d.expenses.push({ id: d.nextExpId++, name: 'Rollover from last month', amount: Math.round(amount), cat: 'savings', type: 'rollover', paidBy: DB.session });
   d.rolloverConsumed = true;
-  saveStore();
+  await saveStore();
   document.getElementById('rollover-banner-slot').innerHTML = '';
   renderAll();
   showToast('Added to savings 🌙');
@@ -1026,8 +1099,8 @@ function addRolloverToSavings(amount){
 /* ============================================================
    ENTER APP
    ============================================================ */
-function enterApp(){
-  seedDemoData();
+async function enterApp(){
+  await seedDemoData();
   goTo('app');
   const user = currentUser();
   const hh = currentHousehold();
@@ -1040,7 +1113,12 @@ function enterApp(){
   renderEverything();
 }
 
-function onMonthChange(){
+async function syncFromCloud(){
+  showToast('Refreshing…');
+  await refreshFromCloud();
+  renderEverything();
+  showToast('Up to date ✓');
+}
   monthIndex = document.getElementById('monthSelect').selectedIndex;
   seedFreshMonthIfFirst();
   renderEverything();
@@ -1193,16 +1271,16 @@ function renderIncome(){
   document.getElementById('inc-total').textContent = fmt(totalIncome(d));
 }
 
-function deleteExpense(id){
+async function deleteExpense(id){
   const d = myData();
   d.expenses = d.expenses.filter(e=>String(e.id)!==String(id));
-  saveStore(); renderAll();
+  await saveStore(); renderAll();
   showToast('Expense removed');
 }
-function deleteIncome(id){
+async function deleteIncome(id){
   const d = myData();
   d.income = d.income.filter(i=>String(i.id)!==String(id));
-  saveStore(); renderAll();
+  await saveStore(); renderAll();
   showToast('Income removed');
 }
 
@@ -1254,25 +1332,25 @@ function renderBank(){
   }
 }
 
-function disconnectBank(id){
+async function disconnectBank(id){
   const d = myData();
   d.banks = d.banks.filter(b=>b.id!==id);
-  saveStore(); renderAll();
+  await saveStore(); renderAll();
   showToast('Account disconnected');
 }
 
-function acceptSuggestion(idx){
+async function acceptSuggestion(idx){
   const d = myData();
   const s = d.suggestions[idx];
   d.expenses.push({ id: d.nextExpId++, name: s.name, amount: s.amount, cat: s.cat, type: s.type, paidBy: DB.session, fromBank: true });
   d.suggestions.splice(idx,1);
-  saveStore(); renderAll();
+  await saveStore(); renderAll();
   showToast('Added to expenses');
 }
-function dismissSuggestion(idx){
+async function dismissSuggestion(idx){
   const d = myData();
   d.suggestions.splice(idx,1);
-  saveStore(); renderAll();
+  await saveStore(); renderAll();
 }
 
 /* ============================================================
@@ -1358,13 +1436,13 @@ function renderFamily(){
 /* ============================================================
    RENDER: EMERGENCY FUND
    ============================================================ */
-function updateEmergency(){
+async function updateEmergency(){
   const d = myData();
   const months = parseInt(document.getElementById('emMonthsSlider').value);
   const current = parseInt(document.getElementById('emCurrentSlider').value);
   const timeline = parseInt(document.getElementById('emTimelineSlider').value);
   d.emergency = { months, current, timeline };
-  saveStore();
+  saveStore(); // fire-and-forget
 
   const monthly = totalExpenses(d) + totalSavings(d);
   const target = monthly * months;
@@ -1543,24 +1621,27 @@ function pickSettingsColor(c){
   document.querySelector(`#set-color-pick .pill-opt[data-color="${c}"]`).classList.add('sel');
 }
 
-function saveSettings(){
+async function saveSettings(){
   const name = document.getElementById('set-name').value.trim();
   const color = document.querySelector('#set-color-pick .pill-opt.sel').dataset.color;
   if (!name) return showToast('Name cannot be empty');
   currentUser().name = name;
   currentUser().color = color;
-  saveStore();
+  showToast('Saving…');
+  await saveStore();
   closeModal('modal-settings');
   document.getElementById('topbar-name').textContent = name;
   document.getElementById('me-avatar').textContent = name[0].toUpperCase();
   document.getElementById('me-avatar').style.background = MEMBER_COLORS[color] || 'var(--mint)';
   renderEverything();
-  showToast('Settings saved');
+  showToast('Settings saved ✓');
 }
 
 function signOut(){
   DB.session = null;
-  saveStore();
+  DB.users = {};
+  DB.households = {};
+  saveSession(null);
   goTo('welcome');
 }
 
@@ -1572,7 +1653,7 @@ function closeModalOnBg(e, id){
   closeModal(id);
 }
 
-function saveExpense(editId){
+async function saveExpense(editId){
   const name = document.getElementById('exp-name').value.trim();
   const amount = parseFloat(document.getElementById('exp-amount').value);
   const cat = document.getElementById('exp-cat').value;
@@ -1586,13 +1667,14 @@ function saveExpense(editId){
   } else {
     d.expenses.push({ id: d.nextExpId++, name, amount, cat, type, paidBy });
   }
-  saveStore();
+  showToast('Saving…');
+  await saveStore();
   closeModal('modal-expense');
   renderAll();
-  showToast('Expense saved');
+  showToast('Expense saved ✓');
 }
 
-function saveIncome(editId){
+async function saveIncome(editId){
   const name = document.getElementById('inc-name').value.trim();
   const amount = parseFloat(document.getElementById('inc-amount').value);
   if (!name || isNaN(amount)) return showToast('Fill in source and amount');
@@ -1603,13 +1685,14 @@ function saveIncome(editId){
   } else {
     d.income.push({ id: d.nextIncId++, name, amount, paidBy: DB.session });
   }
-  saveStore();
+  showToast('Saving…');
+  await saveStore();
   closeModal('modal-income');
   renderAll();
-  showToast('Income saved');
+  showToast('Income saved ✓');
 }
 
-function connectBank(presetIdx){
+async function connectBank(presetIdx){
   const preset = BANK_PRESETS[presetIdx];
   const d = myData();
   const balance = rand(8000, 280000);
@@ -1618,7 +1701,6 @@ function connectBank(presetIdx){
     balance, last4: String(rand(1000,9999))
   });
 
-  // generate suggestions
   if (!d.suggestions) d.suggestions = [];
   const pickCount = rand(2,4);
   const shuffled = [...SUGGESTION_POOL].sort(()=>Math.random()-0.5).slice(0,pickCount);
@@ -1626,7 +1708,8 @@ function connectBank(presetIdx){
     d.suggestions.push({ name: s.name, cat: s.cat, type: s.type, amount: s.amount(), bank: preset.name });
   });
 
-  saveStore();
+  showToast('Connecting…');
+  await saveStore();
   closeModal('modal-bank');
   renderAll();
   showToast(`${preset.name} connected`);
@@ -1649,14 +1732,37 @@ function showToast(msg){
 }
 
 /* ============================================================
-   BOOT
+   BOOT — restore session from localStorage, reload data from cloud
    ============================================================ */
-(function boot(){
-  if (DB.session && DB.users[DB.session] && DB.users[DB.session].householdId) {
-    enterApp();
-  } else if (DB.session && DB.users[DB.session]) {
-    goTo('household');
-  } else {
+(async function boot(){
+  const savedSession = loadSession();
+  if (!savedSession) { goTo('welcome'); return; }
+
+  // Show a loading state
+  document.body.innerHTML += `<div id="boot-overlay" style="position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px;">
+    <div style="font-size:32px;">🌿</div>
+    <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--text);">Hearth</div>
+    <div style="font-size:13px;color:var(--text3);">Loading your data…</div>
+  </div>`;
+
+  try {
+    // Load user from Supabase
+    const { data: user, error } = await supa.from('users').select('*').eq('id', savedSession).single();
+    if (error || !user) { saveSession(null); document.getElementById('boot-overlay').remove(); goTo('welcome'); return; }
+
+    DB.users[user.id] = { id: user.id, name: user.name, pinHash: user.pin_hash, color: user.color, householdId: user.household_id };
+    DB.session = user.id;
+
+    if (user.household_id) {
+      await refreshFromCloud();
+      document.getElementById('boot-overlay').remove();
+      enterApp();
+    } else {
+      document.getElementById('boot-overlay').remove();
+      goTo('household');
+    }
+  } catch(e) {
+    document.getElementById('boot-overlay').remove();
     goTo('welcome');
   }
 })();
