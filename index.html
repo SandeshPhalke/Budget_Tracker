@@ -404,12 +404,12 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
         <input type="password" id="su-pin2" placeholder="••••" inputmode="numeric" maxlength="6" autocomplete="new-password">
       </div>
 
-      <button class="btn btn-primary btn-block" onclick="signUp()">Create account</button>
+      <button class="btn btn-primary btn-block" id="su-btn" onclick="signUp()">Create account</button>
       <div class="auth-foot">Already have an account? <a onclick="goTo('signin')">Sign in</a></div>
 
       <div class="mock-banner" style="margin-top:18px;">
         <span>🔒</span>
-        <span>Your PIN is hashed and checked locally on this device/browser. This protects against someone else casually opening the app on your phone or laptop — it is not a substitute for a server-backed account, and clearing browser data will erase it.</span>
+        <span>Your PIN is hashed with SHA-256 before being stored in the cloud — we never store your raw PIN. Your name must be unique across all users worldwide.</span>
       </div>
     </div>
   </div>
@@ -431,7 +431,7 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
         <input type="password" id="si-pin" placeholder="••••" inputmode="numeric" maxlength="6" autocomplete="current-password">
       </div>
 
-      <button class="btn btn-primary btn-block" onclick="signIn()">Sign in</button>
+      <button class="btn btn-primary btn-block" id="si-btn" onclick="signIn()">Sign in</button>
       <div class="auth-foot">New here? <a onclick="goTo('signup')">Create an account</a></div>
     </div>
   </div>
@@ -728,6 +728,13 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
 <div id="modal-root"></div>
 <div class="toast" id="toast"></div>
 
+<!-- Boot loading overlay -->
+<div id="boot-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px;">
+  <div style="font-size:36px;">🌿</div>
+  <div style="font-family:'Lexend',sans-serif;font-size:18px;font-weight:700;color:#f1f0f3;">Hearth</div>
+  <div style="font-size:13px;color:#6f6d7a;">Loading your data…</div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================
@@ -872,57 +879,92 @@ async function signUp(){
   const pin = document.getElementById('su-pin').value.trim();
   const pin2 = document.getElementById('su-pin2').value.trim();
 
-  if (!name) return showToast('Tell us your name first');
+  if (!name) return showToast('Enter your name');
+  if (name.length < 2) return showToast('Name must be at least 2 characters');
   if (!/^\d{4,6}$/.test(pin)) return showToast('PIN must be 4–6 digits');
   if (pin !== pin2) return showToast("PINs don't match");
 
-  showToast('Creating account…');
-  // Check name uniqueness across ALL devices
-  const { data: existing } = await supa.from('users').select('id').ilike('name', name).single();
-  if (existing) return showToast('That name is already taken — try signing in');
+  // Disable button to prevent double-submit
+  const btn = document.getElementById('su-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+  showToast('Checking name…');
 
-  const pinHash = await hashPin(pin);
-  const newId = uid();
-  const { error } = await supa.from('users').insert({
-    id: newId, name, pin_hash: pinHash, color: 'mint', household_id: null
-  });
-  if (error) return showToast('Error creating account: ' + error.message);
+  try {
+    // Strict case-insensitive uniqueness check across ALL devices
+    const { data: existing, error: checkErr } = await supa
+      .from('users').select('id').ilike('name', name.toLowerCase());
+    if (checkErr) throw new Error(checkErr.message);
+    if (existing && existing.length > 0) {
+      showToast('That name is already taken — choose a different name or sign in');
+      if (btn) { btn.disabled = false; btn.textContent = 'Create account'; }
+      return;
+    }
 
-  DB.users[newId] = { id: newId, name, pinHash, color: 'mint', householdId: null };
-  DB.session = newId;
-  saveSession(newId);
+    showToast('Creating account…');
+    const pinHash = await hashPin(pin);
+    const newId = uid();
+    const { error } = await supa.from('users').insert({
+      id: newId,
+      name: name,  // store original casing
+      pin_hash: pinHash,
+      color: 'mint',
+      household_id: null
+    });
+    if (error) throw new Error(error.message);
 
-  document.getElementById('su-name').value = '';
-  document.getElementById('su-pin').value = '';
-  document.getElementById('su-pin2').value = '';
+    DB.users[newId] = { id: newId, name, pinHash, color: 'mint', householdId: null };
+    DB.session = newId;
+    saveSession(newId);
 
-  goTo('household');
+    document.getElementById('su-name').value = '';
+    document.getElementById('su-pin').value = '';
+    document.getElementById('su-pin2').value = '';
+
+    goTo('household');
+  } catch(e) {
+    showToast('Error: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Create account'; }
+  }
 }
 
 async function signIn(){
   const userId = document.getElementById('si-user-select').value;
   const pin = document.getElementById('si-pin').value.trim();
-  if (!userId) return showToast('Choose a profile');
+  if (!userId) return showToast('Choose your profile first');
   if (!pin) return showToast('Enter your PIN');
 
-  showToast('Signing in…');
-  const { data: user, error } = await supa.from('users').select('*').eq('id', userId).single();
-  if (error || !user) return showToast('User not found');
+  const btn = document.getElementById('si-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+  showToast('Verifying…');
 
-  const pinHash = await hashPin(pin);
-  if (pinHash !== user.pin_hash) return showToast('Incorrect PIN');
+  try {
+    const { data: user, error } = await supa.from('users').select('*').eq('id', userId).single();
+    if (error || !user) throw new Error('Account not found. Please create an account.');
 
-  DB.users[user.id] = { id: user.id, name: user.name, pinHash: user.pin_hash, color: user.color, householdId: user.household_id };
-  DB.session = user.id;
-  saveSession(user.id);
-  document.getElementById('si-pin').value = '';
+    const pinHash = await hashPin(pin);
+    if (pinHash !== user.pin_hash) {
+      showToast('Incorrect PIN — try again');
+      if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
+      document.getElementById('si-pin').value = '';
+      document.getElementById('si-pin').focus();
+      return;
+    }
 
-  if (!user.household_id) {
-    goTo('household');
-  } else {
-    showToast('Loading your data…');
-    await refreshFromCloud();
-    enterApp();
+    DB.users[user.id] = { id: user.id, name: user.name, pinHash: user.pin_hash, color: user.color, householdId: user.household_id };
+    DB.session = user.id;
+    saveSession(user.id);
+    document.getElementById('si-pin').value = '';
+
+    if (!user.household_id) {
+      goTo('household');
+    } else {
+      showToast('Loading your data…');
+      await refreshFromCloud();
+      enterApp();
+    }
+  } catch(e) {
+    showToast(e.message || 'Sign in failed');
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
   }
 }
 
@@ -1738,31 +1780,31 @@ function showToast(msg){
   const savedSession = loadSession();
   if (!savedSession) { goTo('welcome'); return; }
 
-  // Show a loading state
-  document.body.innerHTML += `<div id="boot-overlay" style="position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px;">
-    <div style="font-size:32px;">🌿</div>
-    <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--text);">Hearth</div>
-    <div style="font-size:13px;color:var(--text3);">Loading your data…</div>
-  </div>`;
+  const overlay = document.getElementById('boot-overlay');
+  if (overlay) overlay.style.display = 'flex';
 
   try {
-    // Load user from Supabase
     const { data: user, error } = await supa.from('users').select('*').eq('id', savedSession).single();
-    if (error || !user) { saveSession(null); document.getElementById('boot-overlay').remove(); goTo('welcome'); return; }
+    if (error || !user) {
+      saveSession(null);
+      if (overlay) overlay.style.display = 'none';
+      goTo('welcome');
+      return;
+    }
 
     DB.users[user.id] = { id: user.id, name: user.name, pinHash: user.pin_hash, color: user.color, householdId: user.household_id };
     DB.session = user.id;
 
     if (user.household_id) {
       await refreshFromCloud();
-      document.getElementById('boot-overlay').remove();
+      if (overlay) overlay.style.display = 'none';
       enterApp();
     } else {
-      document.getElementById('boot-overlay').remove();
+      if (overlay) overlay.style.display = 'none';
       goTo('household');
     }
   } catch(e) {
-    document.getElementById('boot-overlay').remove();
+    if (overlay) overlay.style.display = 'none';
     goTo('welcome');
   }
 })();
