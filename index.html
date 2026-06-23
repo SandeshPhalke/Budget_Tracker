@@ -536,6 +536,7 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
             <option>May</option><option>Jun</option><option selected>Jul</option>
             <option>Aug</option><option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
           </select>
+          <select id="yearSelect" onchange="onMonthChange()" style="margin-left:4px;"></select>
         </div>
         <div class="icon-pill" onclick="openModal('settings')" title="Settings">⚙️</div>
         <div class="icon-pill" onclick="syncFromCloud()" title="Sync latest data">🔄</div>
@@ -547,6 +548,8 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
       <button class="tab" data-tab="expenses" onclick="switchTab('expenses')">Expenses</button>
       <button class="tab" data-tab="income" onclick="switchTab('income')">Income</button>
       <button class="tab" data-tab="bank" onclick="switchTab('bank')">Accounts</button>
+      <button class="tab" data-tab="investments" onclick="switchTab('investments')">Investments</button>
+      <button class="tab" data-tab="savings" onclick="switchTab('savings')">Savings</button>
       <button class="tab" data-tab="family" onclick="switchTab('family')">Family</button>
       <button class="tab" data-tab="emergency" onclick="switchTab('emergency')">Emergency</button>
     </div>
@@ -603,11 +606,24 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
     <div class="tab-panel" id="tab-expenses">
       <div class="section">
         <div class="section-head">
-          <h2>Expenses</h2>
-          <button class="add-btn" onclick="openModal('expense')">+ Add</button>
+          <h2>📌 Fixed monthly bills</h2>
+          <button class="add-btn" onclick="openModal('expense', null, 'fixed')">+ Add</button>
         </div>
-        <div id="expense-list"></div>
-        <div class="total-row"><span>Total</span><span class="num" id="exp-total" style="color:var(--coral)">₹0</span></div>
+        <div id="expense-fixed-list"></div>
+        <div class="total-row"><span>Fixed total</span><span class="num" id="exp-fixed-total" style="color:var(--coral)">₹0</span></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>☕ Daily spending log</h2>
+          <button class="add-btn" onclick="openModal('expense', null, 'variable')">+ Add</button>
+        </div>
+        <div id="expense-daily-list"></div>
+        <div class="total-row"><span>Daily total</span><span class="num" id="exp-daily-total" style="color:var(--coral)">₹0</span></div>
+      </div>
+
+      <div class="section">
+        <div class="total-row" style="background:var(--surface3)"><span>Grand total (fixed + daily + savings)</span><span class="num" id="exp-total" style="color:var(--sand)">₹0</span></div>
       </div>
     </div>
 
@@ -626,23 +642,88 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
     <!-- BANK / ACCOUNTS -->
     <div class="tab-panel" id="tab-bank">
       <div class="section" style="padding:18px 18px 4px; background:none; border:none; margin-bottom:8px;">
-        <h3 style="margin-bottom:4px;">Linked accounts</h3>
-        <div style="font-size:12px;color:var(--text3);">Connect accounts to auto-track balances and suggest transactions.</div>
+        <h3 style="margin-bottom:4px;">Your accounts</h3>
+        <div style="font-size:12px;color:var(--text3);">Enter your real starting balance once — the app then keeps it updated using your income, expenses, and any carried-forward surplus.</div>
       </div>
       <div id="bank-list"></div>
       <div class="connect-bank-card" onclick="openModal('bank')">
         <div class="ic">🏦</div>
-        <div class="t">Connect a bank account</div>
-        <div class="s">Simulated secure connection · demo only</div>
-      </div>
-
-      <div class="section" id="suggestions-section" style="display:none;">
-        <div class="section-head">
-          <h3>Suggested from your accounts</h3>
-        </div>
-        <div id="suggestion-list"></div>
+        <div class="t">Add a bank account</div>
+        <div class="s">Enter your real starting balance</div>
       </div>
     </div>
+
+    <!-- INVESTMENTS -->
+    <div class="tab-panel" id="tab-investments">
+      <div class="section" style="padding:18px 18px 4px; background:none; border:none; margin-bottom:8px;">
+        <h3 style="margin-bottom:4px;">Stocks & mutual funds</h3>
+        <div style="font-size:12px;color:var(--text3);">Add each holding manually and update its current value whenever you check it.</div>
+      </div>
+      <div class="summary-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="card c-save">
+          <div class="card-label">Invested</div>
+          <div class="card-value num" id="inv-invested">₹0</div>
+          <div class="card-sub">Total cost basis</div>
+        </div>
+        <div class="card c-balance">
+          <div class="card-label">Current value</div>
+          <div class="card-value num" id="inv-current">₹0</div>
+          <div class="card-sub" id="inv-gain-note">—</div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-head">
+          <h2>Holdings</h2>
+          <button class="add-btn" onclick="openModal('investment')">+ Add</button>
+        </div>
+        <div id="investment-list"></div>
+      </div>
+    </div>
+
+    <!-- SAVINGS -->
+    <div class="tab-panel" id="tab-savings">
+      <div class="section" style="padding:18px 18px 4px; background:none; border:none; margin-bottom:8px;">
+        <h3 style="margin-bottom:4px;">Savings</h3>
+        <div style="font-size:12px;color:var(--text3);">Track what you've put away this month, your goal, and what's carried forward from past months.</div>
+      </div>
+      <div class="summary-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="card c-save">
+          <div class="card-label">Saved this month</div>
+          <div class="card-value num" id="sav-month">₹0</div>
+          <div class="card-sub" id="sav-month-pct">0% of income</div>
+        </div>
+        <div class="card c-balance">
+          <div class="card-label">Net worth saved</div>
+          <div class="card-value num" id="sav-total">₹0</div>
+          <div class="card-sub">Bank + investments</div>
+        </div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-header">
+          <h2>Savings goal</h2>
+          <button class="icon-btn" onclick="openModal('savingsGoal')">✏️</button>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill progress-ok" id="sav-goal-fill" style="width:0%"></div>
+        </div>
+        <div class="progress-labels num">
+          <span id="sav-goal-current">₹0 saved</span>
+          <span id="sav-goal-target">Goal ₹0</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h3>Carried forward into this month</h3></div>
+        <div id="sav-carry-list"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h3>Savings history (last 6 months)</h3></div>
+        <div id="sav-history-list"></div>
+      </div>
+    </div>
+
 
     <!-- FAMILY -->
     <div class="tab-panel" id="tab-family">
@@ -1048,94 +1129,208 @@ function currentUser(){ return DB.users[DB.session]; }
 function currentHousehold(){ return DB.households[currentUser().householdId]; }
 
 let monthIndex = new Date().getMonth(); // 0-11
+let yearIndex = new Date().getFullYear();
 
-function monthDataFor(hh, mIdx, userId){
-  const mKey = 'm' + mIdx;
+function periodKey(y, m){ return 'y' + y + 'm' + m; }
+
+/* Accounts (bank balances, investments, savings goal) are real, ongoing things —
+   they don't reset every month like an expense log does. They live once per
+   household-member, separate from the month-by-month expense/income data. */
+function accountsFor(hh, userId){
+  if (!hh.accounts) hh.accounts = {};
+  if (!hh.accounts[userId]) {
+    hh.accounts[userId] = { banks: [], investments: [], savingsGoal: 0, nextInvId: 1, lastAppliedPeriod: null };
+  }
+  const acc = hh.accounts[userId];
+  if (!acc.banks) acc.banks = [];
+  if (!acc.investments) acc.investments = [];
+  if (acc.savingsGoal === undefined) acc.savingsGoal = 0;
+  if (!acc.nextInvId) acc.nextInvId = 1;
+  return acc;
+}
+
+function myAccounts(){
+  return accountsFor(currentHousehold(), DB.session);
+}
+
+function monthDataFor(hh, mIdx, userId, yIdx){
+  const y = (yIdx === undefined) ? yearIndex : yIdx;
+  const mKey = periodKey(y, mIdx);
+  // migrate legacy data (no year) the first time it's touched for the current year
+  if (!hh.data[mKey] && hh.data['m'+mIdx] && y === new Date().getFullYear()) {
+    hh.data[mKey] = hh.data['m'+mIdx];
+  }
   if (!hh.data[mKey]) hh.data[mKey] = {};
   if (!hh.data[mKey][userId]) {
     hh.data[mKey][userId] = {
-      expenses: [],
+      expensesFixed: [],
+      expensesDaily: [],
       income: [],
-      banks: [],
       emergency: { months: 6, current: 0, timeline: 12 },
       nextExpId: 1,
       nextIncId: 1,
       rolloverApplied: false
     };
   }
-  return hh.data[mKey][userId];
+  const data = hh.data[mKey][userId];
+  // migrate legacy single "expenses" array into fixed/daily split
+  if (data.expenses && !data._migratedExpenses) {
+    data.expensesFixed = data.expenses.filter(e=>e.type==='fixed' || e.cat==='savings' || e.type==='rollover');
+    data.expensesDaily = data.expenses.filter(e=>e.type==='variable');
+    data._migratedExpenses = true;
+    delete data.expenses;
+  }
+  if (!data.expensesFixed) data.expensesFixed = [];
+  if (!data.expensesDaily) data.expensesDaily = [];
+
+  // one-time migration: pull any banks/investments/savingsGoal that used to live
+  // on this specific month over into the new persistent accounts store
+  const acc = accountsFor(hh, userId);
+  if (data.banks && data.banks.length && !acc.banks.length) {
+    acc.banks = data.banks.map(b => ({
+      id: b.id, name: b.name, icon: b.icon, color: b.color, last4: b.last4,
+      balance: (b.balance !== undefined) ? b.balance : (b.startingBalance || 0)
+    }));
+  }
+  delete data.banks;
+  if (data.investments && data.investments.length && !acc.investments.length) {
+    acc.investments = data.investments;
+    acc.nextInvId = data.nextInvId || (data.investments.length + 1);
+  }
+  delete data.investments;
+  if (data.savingsGoal && !acc.savingsGoal) acc.savingsGoal = data.savingsGoal;
+  delete data.savingsGoal;
+  delete data.nextInvId;
+
+  return data;
 }
 
+function allExpenses(d){ return [...d.expensesFixed, ...d.expensesDaily]; }
+
 function myData(){
-  return monthDataFor(currentHousehold(), monthIndex, DB.session);
+  return monthDataFor(currentHousehold(), monthIndex, DB.session, yearIndex);
 }
 
 async function seedDemoData(){
   const d = myData();
-  if (d.expenses.length || d.income.length) return;
-  d.expenses = [
+  if (d.expensesFixed.length || d.expensesDaily.length || d.income.length) return;
+  d.expensesFixed = [
     { id: d.nextExpId++, name:'SBI EMI', amount:27507, cat:'emi', type:'fixed', paidBy: DB.session },
     { id: d.nextExpId++, name:'HDFC EMI', amount:33888, cat:'emi', type:'fixed', paidBy: DB.session },
     { id: d.nextExpId++, name:'Rent', amount:6800, cat:'rent', type:'fixed', paidBy: DB.session },
-    { id: d.nextExpId++, name:'Sabari (food)', amount:1287, cat:'food', type:'variable', paidBy: DB.session },
     { id: d.nextExpId++, name:'Light bill', amount:600, cat:'utilities', type:'fixed', paidBy: DB.session },
-    { id: d.nextExpId++, name:'Petrol', amount:1500, cat:'transport', type:'variable', paidBy: DB.session },
     { id: d.nextExpId++, name:'Insurance', amount:5100, cat:'insurance', type:'fixed', paidBy: DB.session },
     { id: d.nextExpId++, name:'Parents', amount:16000, cat:'family', type:'fixed', paidBy: DB.session },
     { id: d.nextExpId++, name:'Subscriptions', amount:2500, cat:'subscriptions', type:'fixed', paidBy: DB.session },
     { id: d.nextExpId++, name:'Savings', amount:4000, cat:'savings', type:'fixed', paidBy: DB.session },
+  ];
+  d.expensesDaily = [
+    { id: d.nextExpId++, name:'Sabari (food)', amount:1287, cat:'food', type:'variable', paidBy: DB.session },
+    { id: d.nextExpId++, name:'Petrol', amount:1500, cat:'transport', type:'variable', paidBy: DB.session },
   ];
   d.income = [{ id: d.nextIncId++, name:'Salary', amount:118944, paidBy: DB.session }];
   await saveStore();
 }
 
 /* ============================================================
-   ROLLOVER — carries last month's leftover savings forward
+   CARRY-FORWARD — automatically rolls last month's leftover
+   balance into this month's savings AND into the bank balance.
    ============================================================ */
-function applyRolloverIfNeeded(){
-  const hh = currentHousehold();
-  const d = myData();
-  if (d.rolloverApplied) return null;
-  if (monthIndex === 0) { d.rolloverApplied = true; return null; }
-
-  const prev = monthDataFor(hh, monthIndex - 1, DB.session);
-  const prevIncome = prev.income.reduce((a,i)=>a+i.amount,0);
-  const prevExpenses = prev.expenses.filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0);
-  const prevSavingsLine = prev.expenses.filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0);
-  const prevLeftover = prevIncome - prevExpenses - prevSavingsLine;
-
-  d.rolloverApplied = true;
-  if (prevLeftover > 0 && (prev.income.length || prev.expenses.length)) {
-    d.rolloverAmount = prevLeftover;
-    d.rolloverConsumed = false;
-    saveStore(); // fire-and-forget async
-    return prevLeftover;
-  }
-  saveStore();
-  return null;
+function prevPeriod(y, m){
+  return m === 0 ? { y: y-1, m: 11 } : { y, m: m-1 };
+}
+function nextPeriod(y, m){
+  return m === 11 ? { y: y+1, m: 0 } : { y, m: m+1 };
+}
+function periodIsPast(y, m){
+  const now = new Date();
+  if (y < now.getFullYear()) return true;
+  if (y > now.getFullYear()) return false;
+  return m < now.getMonth();
 }
 
-function renderRolloverBanner(amount){
+/* Each completed calendar month's net (income - expenses - savings) is applied
+   exactly once to the real, ongoing bank balance — like a bank statement closing
+   out at month-end. We walk forward from the last-applied period to "today",
+   applying every completed month we haven't applied yet. This naturally carries
+   leftover (or shortfall) forward without ever double-counting it, and it works
+   correctly with any number of accounts since each keeps one running balance. */
+function applyCompletedMonthsToBalance(){
+  const hh = currentHousehold();
+  const acc = myAccounts();
+  if (!acc.banks.length) return; // nothing to apply to yet
+
+  let { y, m } = acc.lastAppliedPeriod
+    ? nextPeriod(acc.lastAppliedPeriod.y, acc.lastAppliedPeriod.m)
+    : prevPeriod(yearIndex, monthIndex); // first run: start from the month before the one being viewed
+
+  let appliedAny = false;
+  let guard = 0;
+  while (periodIsPast(y, m) && guard < 600) {
+    guard++;
+    const key = periodKey(y, m);
+    const monthData = hh.data[key] && hh.data[key][DB.session];
+    if (monthData) {
+      const income = monthData.income.reduce((a,i)=>a+i.amount,0);
+      const expenses = allExpenses(monthData).filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0);
+      const savings = allExpenses(monthData).filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0);
+      const net = income - expenses - savings;
+      if (net !== 0 && acc.banks.length) {
+        const totalStarting = acc.banks.reduce((a,b)=>a+(b.balance||0), 0);
+        acc.banks.forEach(b => {
+          const share = totalStarting > 0 ? (b.balance||0)/totalStarting : 1/acc.banks.length;
+          b.balance = (b.balance||0) + net * share;
+        });
+      }
+    }
+    acc.lastAppliedPeriod = { y, m };
+    appliedAny = true;
+    const nxt = nextPeriod(y, m);
+    y = nxt.y; m = nxt.m;
+  }
+  if (appliedAny) saveStore();
+}
+
+/* For display only: the current (not-yet-closed) month's running balance is the
+   already-applied total plus this month's net-so-far, split the same way. */
+function bankCurrentBalance(d, bank){
+  const acc = myAccounts();
+  const net = totalIncome(d) - totalExpenses(d) - totalSavings(d);
+  const totalBase = acc.banks.reduce((a,b)=>a+(b.balance||0), 0);
+  const share = totalBase > 0 ? (bank.balance||0)/totalBase : (acc.banks.length ? 1/acc.banks.length : 0);
+  return (bank.balance||0) + net * share;
+}
+function totalBankBalance(d){
+  return myAccounts().banks.reduce((a,b)=>a+bankCurrentBalance(d,b),0);
+}
+function totalInvestmentValue(d){
+  return myAccounts().investments.reduce((a,i)=>a+(i.currentValue||0),0);
+}
+function totalNetWorth(d){
+  return totalBankBalance(d) + totalInvestmentValue(d);
+}
+
+function renderLastMonthBanner(){
   const slot = document.getElementById('rollover-banner-slot');
-  if (!amount || amount <= 0) { slot.innerHTML = ''; return; }
+  const hh = currentHousehold();
+  const { y: py, m: pm } = prevPeriod(yearIndex, monthIndex);
+  const prevKey = periodKey(py, pm);
+  const prev = hh.data[prevKey] && hh.data[prevKey][DB.session];
+  if (!prev || !(prev.income.length || allExpenses(prev).length)) { slot.innerHTML = ''; return; }
+
+  const income = prev.income.reduce((a,i)=>a+i.amount,0);
+  const expenses = allExpenses(prev).filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0);
+  const savings = allExpenses(prev).filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0);
+  const net = income - expenses - savings;
+  if (net === 0) { slot.innerHTML = ''; return; }
+
   slot.innerHTML = `
     <div class="rollover-banner">
-      <div class="ic">🌙</div>
+      <div class="ic">${net>0 ? '🌙' : '⚠️'}</div>
       <div>
-        <b>${fmt(amount)} carried forward</b> from last month's leftover balance.
-        <a style="color:var(--lav-text);text-decoration:underline;cursor:pointer;font-weight:700;" onclick="addRolloverToSavings(${amount})">Add to this month's savings →</a>
+        <b>${fmt(Math.abs(net))} ${net>0?'left over':'shortfall'}</b> from ${MONTHS[pm]} ${py} has been carried into your account balance automatically.
       </div>
     </div>`;
-}
-
-async function addRolloverToSavings(amount){
-  const d = myData();
-  d.expenses.push({ id: d.nextExpId++, name: 'Rollover from last month', amount: Math.round(amount), cat: 'savings', type: 'rollover', paidBy: DB.session });
-  d.rolloverConsumed = true;
-  await saveStore();
-  document.getElementById('rollover-banner-slot').innerHTML = '';
-  renderAll();
-  showToast('Added to savings 🌙');
 }
 
 /* ============================================================
@@ -1151,6 +1346,17 @@ async function enterApp(){
   document.getElementById('me-avatar').textContent = (user.name||'U')[0].toUpperCase();
   document.getElementById('me-avatar').style.background = MEMBER_COLORS[user.color] || 'var(--mint)';
   document.getElementById('invite-code-display').textContent = hh.inviteCode;
+
+  const yearSelect = document.getElementById('yearSelect');
+  const thisYear = new Date().getFullYear();
+  if (!yearSelect.options.length) {
+    for (let y = thisYear - 5; y <= thisYear + 1; y++) {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      yearSelect.appendChild(opt);
+    }
+  }
+  yearSelect.value = yearIndex;
   document.getElementById('monthSelect').selectedIndex = monthIndex;
   renderEverything();
 }
@@ -1164,6 +1370,7 @@ async function syncFromCloud(){
 
 function onMonthChange(){
   monthIndex = document.getElementById('monthSelect').selectedIndex;
+  yearIndex = parseInt(document.getElementById('yearSelect').value, 10) || yearIndex;
   seedFreshMonthIfFirst();
   renderEverything();
 }
@@ -1186,9 +1393,11 @@ function switchTab(name){
 /* ============================================================
    CALCULATIONS
    ============================================================ */
-function totalExpenses(d){ return d.expenses.filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0); }
-function totalSavings(d){ return d.expenses.filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0); }
+function totalExpenses(d){ return allExpenses(d).filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0); }
+function totalSavings(d){ return allExpenses(d).filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0); }
 function totalIncome(d){ return d.income.reduce((a,i)=>a+i.amount,0); }
+function totalFixed(d){ return d.expensesFixed.filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0); }
+function totalDaily(d){ return d.expensesDaily.reduce((a,e)=>a+e.amount,0); }
 
 /* ============================================================
    RENDER: OVERVIEW
@@ -1230,7 +1439,7 @@ function renderOverview(){
   }
 
   const byCategory = {};
-  d.expenses.forEach(e => { byCategory[e.cat] = (byCategory[e.cat]||0) + e.amount; });
+  allExpenses(d).forEach(e => { byCategory[e.cat] = (byCategory[e.cat]||0) + e.amount; });
   const sorted = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]);
   const breakdown = document.getElementById('breakdown-list');
   if (!sorted.length) {
@@ -1254,8 +1463,8 @@ function renderOverview(){
     }).join('');
   }
 
-  applyRolloverIfNeeded();
-  renderRolloverBanner(d.rolloverAmount && !d.rolloverConsumed ? d.rolloverAmount : null);
+  applyCompletedMonthsToBalance();
+  renderLastMonthBanner();
 }
 
 /* ============================================================
@@ -1267,20 +1476,14 @@ function memberChip(userId){
   return `<span class="member-chip"><span class="avatar-dot dot" style="background:${MEMBER_COLORS[u.color]||'var(--mint)'}">${(u.name||'?')[0].toUpperCase()}</span>${u.name.split(' ')[0]}</span>`;
 }
 
-function renderExpenses(){
-  const d = myData();
-  const list = document.getElementById('expense-list');
-  if (!d.expenses.length) {
-    list.innerHTML = `<div class="empty-state"><div class="ic">🧾</div><div class="t">No expenses yet. Tap "+ Add" to log one.</div></div>`;
-  } else {
-    list.innerHTML = d.expenses.map(e=>`
+function expenseRowHtml(e){
+  return `
       <div class="row">
         <div class="row-icon">${ICONS[e.cat]||'💰'}</div>
         <div class="row-info">
           <div class="row-name">${e.name}</div>
           <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;">
             <span class="tag tag-${e.cat==='emi'?'emi':e.cat==='savings'?'saving':(e.type==='rollover'?'rollover':e.type)}">${LABELS[e.cat]||e.cat}</span>
-            <span class="tag" style="background:var(--surface3);color:var(--text2)">${e.type}</span>
           </div>
         </div>
         <div class="row-amount expense num">${fmt(e.amount)}</div>
@@ -1288,10 +1491,29 @@ function renderExpenses(){
           <button class="icon-btn" onclick="openModal('expense','${e.id}')">✏️</button>
           <button class="icon-btn" onclick="deleteExpense('${e.id}')">🗑</button>
         </div>
-      </div>
-    `).join('');
+      </div>`;
+}
+
+function renderExpenses(){
+  const d = myData();
+  const fixedList = document.getElementById('expense-fixed-list');
+  const dailyList = document.getElementById('expense-daily-list');
+
+  if (!d.expensesFixed.length) {
+    fixedList.innerHTML = `<div class="empty-state"><div class="ic">🧾</div><div class="t">No fixed bills yet. Tap "+ Add" to log one.</div></div>`;
+  } else {
+    fixedList.innerHTML = d.expensesFixed.map(expenseRowHtml).join('');
   }
-  document.getElementById('exp-total').textContent = fmt(d.expenses.reduce((a,e)=>a+e.amount,0));
+
+  if (!d.expensesDaily.length) {
+    dailyList.innerHTML = `<div class="empty-state"><div class="ic">☕</div><div class="t">No day-to-day spending logged yet.</div></div>`;
+  } else {
+    dailyList.innerHTML = d.expensesDaily.map(expenseRowHtml).join('');
+  }
+
+  document.getElementById('exp-fixed-total').textContent = fmt(totalFixed(d));
+  document.getElementById('exp-daily-total').textContent = fmt(totalDaily(d));
+  document.getElementById('exp-total').textContent = fmt(totalExpenses(d) + totalSavings(d));
 }
 
 function renderIncome(){
@@ -1303,7 +1525,10 @@ function renderIncome(){
     list.innerHTML = d.income.map(i=>`
       <div class="row">
         <div class="row-icon" style="background:var(--mint-bg)">💼</div>
-        <div class="row-info"><div class="row-name">${i.name}</div></div>
+        <div class="row-info">
+          <div class="row-name">${i.name}</div>
+          ${i.type==='rollover' ? '<div style="margin-top:4px;"><span class="tag tag-rollover">Carried forward</span></div>' : ''}
+        </div>
         <div class="row-amount income num">${fmt(i.amount)}</div>
         <div class="row-actions">
           <button class="icon-btn" onclick="openModal('income','${i.id}')">✏️</button>
@@ -1317,7 +1542,8 @@ function renderIncome(){
 
 async function deleteExpense(id){
   const d = myData();
-  d.expenses = d.expenses.filter(e=>String(e.id)!==String(id));
+  d.expensesFixed = d.expensesFixed.filter(e=>String(e.id)!==String(id));
+  d.expensesDaily = d.expensesDaily.filter(e=>String(e.id)!==String(id));
   await saveStore(); renderAll();
   showToast('Expense removed');
 }
@@ -1333,69 +1559,171 @@ async function deleteIncome(id){
    ============================================================ */
 function renderBank(){
   const d = myData();
+  const acc = myAccounts();
   const list = document.getElementById('bank-list');
-  if (!d.banks.length) {
+  if (!acc.banks.length) {
     list.innerHTML = '';
   } else {
-    list.innerHTML = d.banks.map(b => `
+    list.innerHTML = acc.banks.map(b => {
+      const bal = bankCurrentBalance(d, b);
+      return `
       <div class="bank-card">
         <div class="bank-logo" style="background:${b.color}">${b.icon}</div>
         <div class="bank-info">
           <div class="bank-name">${b.name}</div>
-          <div class="bank-meta">•••• ${b.last4} <span class="synced-pill" style="margin-left:6px;"><span class="pulse-dot"></span>Synced</span></div>
+          <div class="bank-meta">${b.last4 ? '•••• '+b.last4 : 'Manual account'}</div>
         </div>
         <div class="bank-balance">
-          <div class="v num">${fmt(b.balance)}</div>
+          <div class="v num">${fmt(bal)}</div>
           <div class="l">balance</div>
         </div>
-        <button class="icon-btn" onclick="disconnectBank('${b.id}')" style="margin-left:8px;">🗑</button>
+        <button class="icon-btn" onclick="openModal('bank','${b.id}')" style="margin-left:4px;">✏️</button>
+        <button class="icon-btn" onclick="disconnectBank('${b.id}')">🗑</button>
       </div>
-    `).join('');
-  }
-
-  const sec = document.getElementById('suggestions-section');
-  const sugList = document.getElementById('suggestion-list');
-  if (d.suggestions && d.suggestions.length) {
-    sec.style.display = '';
-    sugList.innerHTML = d.suggestions.map((s,idx) => `
-      <div class="suggestion-row">
-        <div class="row-icon">${ICONS[s.cat]||'💰'}</div>
-        <div class="row-info">
-          <div class="row-name">${s.name}</div>
-          <div class="row-meta">Detected from ${s.bank} · ${LABELS[s.cat]}</div>
-        </div>
-        <div class="row-amount expense num">${fmt(s.amount)}</div>
-        <div class="row-actions">
-          <button class="icon-btn" onclick="acceptSuggestion(${idx})" title="Add as expense">✔️</button>
-          <button class="icon-btn" onclick="dismissSuggestion(${idx})" title="Dismiss">✕</button>
-        </div>
-      </div>
-    `).join('');
-  } else {
-    sec.style.display = 'none';
+    `;
+    }).join('');
   }
 }
 
 async function disconnectBank(id){
-  const d = myData();
-  d.banks = d.banks.filter(b=>b.id!==id);
+  const acc = myAccounts();
+  acc.banks = acc.banks.filter(b=>b.id!==id);
   await saveStore(); renderAll();
-  showToast('Account disconnected');
+  showToast('Account removed');
 }
 
-async function acceptSuggestion(idx){
-  const d = myData();
-  const s = d.suggestions[idx];
-  d.expenses.push({ id: d.nextExpId++, name: s.name, amount: s.amount, cat: s.cat, type: s.type, paidBy: DB.session, fromBank: true });
-  d.suggestions.splice(idx,1);
-  await saveStore(); renderAll();
-  showToast('Added to expenses');
+/* ============================================================
+   RENDER: INVESTMENTS (stocks & mutual funds, manual entry)
+   ============================================================ */
+function investmentRowHtml(i){
+  const gain = (i.currentValue||0) - (i.invested||0);
+  const gainPct = i.invested ? Math.round((gain/i.invested)*100) : 0;
+  const gainColor = gain >= 0 ? 'var(--mint)' : 'var(--coral)';
+  return `
+    <div class="row">
+      <div class="row-icon">${i.kind==='mf' ? '📈' : '📊'}</div>
+      <div class="row-info">
+        <div class="row-name">${i.name}</div>
+        <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;">
+          <span class="tag">${i.kind==='mf' ? 'Mutual fund' : 'Stock'}</span>
+          <span style="font-size:11.5px;color:${gainColor}" class="num">${gain>=0?'+':''}${fmt(gain)} (${gainPct}%)</span>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="row-amount num" style="color:var(--text)">${fmt(i.currentValue||0)}</div>
+        <div style="font-size:11px;color:var(--text3)" class="num">invested ${fmt(i.invested||0)}</div>
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn" onclick="openModal('investment','${i.id}')">✏️</button>
+        <button class="icon-btn" onclick="deleteInvestment('${i.id}')">🗑</button>
+      </div>
+    </div>`;
 }
-async function dismissSuggestion(idx){
+
+function renderInvestments(){
+  const acc = myAccounts();
   const d = myData();
-  d.suggestions.splice(idx,1);
-  await saveStore(); renderAll();
+  const list = document.getElementById('investment-list');
+  if (!acc.investments.length) {
+    list.innerHTML = `<div class="empty-state"><div class="ic">📈</div><div class="t">No holdings yet. Tap "+ Add" to log a stock or mutual fund.</div></div>`;
+  } else {
+    list.innerHTML = acc.investments.map(investmentRowHtml).join('');
+  }
+  const invested = acc.investments.reduce((a,i)=>a+(i.invested||0),0);
+  const current = totalInvestmentValue(d);
+  const gain = current - invested;
+  document.getElementById('inv-invested').textContent = fmt(invested);
+  document.getElementById('inv-current').textContent = fmt(current);
+  const note = document.getElementById('inv-gain-note');
+  note.textContent = (gain>=0?'+':'') + fmt(gain) + ' overall';
+  note.style.color = gain>=0 ? 'var(--mint)' : 'var(--coral)';
 }
+
+async function deleteInvestment(id){
+  const acc = myAccounts();
+  acc.investments = acc.investments.filter(i=>String(i.id)!==String(id));
+  await saveStore(); renderAll();
+  showToast('Holding removed');
+}
+
+/* ============================================================
+   RENDER: SAVINGS
+   ============================================================ */
+function renderSavings(){
+  const d = myData();
+  const hh = currentHousehold();
+  const acc = myAccounts();
+  const income = totalIncome(d);
+  const savedThisMonth = totalSavings(d);
+  document.getElementById('sav-month').textContent = fmt(savedThisMonth);
+  document.getElementById('sav-month-pct').textContent = (income? Math.round(savedThisMonth/income*100):0) + '% of income';
+
+  const netWorth = totalNetWorth(d);
+  document.getElementById('sav-total').textContent = fmt(netWorth);
+
+  const goal = acc.savingsGoal || 0;
+  const pct = goal>0 ? Math.min(100, Math.round(netWorth/goal*100)) : 0;
+  document.getElementById('sav-goal-fill').style.width = pct+'%';
+  document.getElementById('sav-goal-current').textContent = fmt(netWorth)+' saved';
+  document.getElementById('sav-goal-target').textContent = goal>0 ? 'Goal '+fmt(goal) : 'No goal set yet';
+
+  // last month's net result — this is what got carried into the running balance
+  const carryList = document.getElementById('sav-carry-list');
+  const { y: py, m: pm } = prevPeriod(yearIndex, monthIndex);
+  const prev = hh.data[periodKey(py, pm)] && hh.data[periodKey(py, pm)][DB.session];
+  if (!prev || !(prev.income.length || allExpenses(prev).length)) {
+    carryList.innerHTML = `<div class="empty-state"><div class="ic">↪️</div><div class="t">No prior month's data to carry forward yet.</div></div>`;
+  } else {
+    const pIncome = prev.income.reduce((a,i)=>a+i.amount,0);
+    const pExpenses = allExpenses(prev).filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0);
+    const pSavings = allExpenses(prev).filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0);
+    const pNet = pIncome - pExpenses - pSavings;
+    carryList.innerHTML = `
+      <div class="row">
+        <div class="row-icon">↪️</div>
+        <div class="row-info"><div class="row-name">From ${MONTHS[pm]} ${py}</div></div>
+        <div class="row-amount num" style="color:${pNet>=0?'var(--mint)':'var(--coral)'}">${pNet>=0?'+':''}${fmt(pNet)}</div>
+      </div>
+    `;
+  }
+
+  // last 6 months history (including current), oldest first
+  const histList = document.getElementById('sav-history-list');
+  const rows = [];
+  for (let i=5; i>=0; i--) {
+    let y = yearIndex, m = monthIndex - i;
+    while (m < 0) { m += 12; y -= 1; }
+    const key = periodKey(y, m);
+    const monthData = hh.data[key] && hh.data[key][DB.session];
+    const saved = monthData ? totalSavings(monthData) : 0;
+    rows.push({ label: MONTHS[m] + ' ' + y, saved, isCurrent: (y===yearIndex && m===monthIndex) });
+  }
+  const maxSaved = Math.max(1, ...rows.map(r=>r.saved));
+  histList.innerHTML = rows.map(r => `
+    <div class="row">
+      <div class="row-info">
+        <div class="row-name">${r.label}${r.isCurrent?' (this month)':''}</div>
+        <div class="progress-bar" style="height:5px;margin-top:6px;background:var(--bg-deep)">
+          <div class="progress-fill" style="width:${Math.round(r.saved/maxSaved*100)}%;background:var(--mint)"></div>
+        </div>
+      </div>
+      <div class="row-amount num" style="color:var(--text)">${fmt(r.saved)}</div>
+    </div>
+  `).join('');
+}
+
+async function saveSavingsGoal(){
+  const acc = myAccounts();
+  const val = parseFloat(document.getElementById('inp-savings-goal').value) || 0;
+  acc.savingsGoal = val;
+  await saveStore();
+  closeModal('modal-savingsGoal');
+  renderAll();
+  showToast('Savings goal updated ✓');
+}
+
+
+
 
 /* ============================================================
    PRIVACY BOUNDARY
@@ -1408,9 +1736,9 @@ function isHouseholdCreator(hh, userId){
   return hh.memberIds[0] === userId;
 }
 
-function memberStatsFor(hh, mIdx, viewerId, targetUserId){
+function memberStatsFor(hh, mIdx, viewerId, targetUserId, yIdx){
   const canSeeDetail = (viewerId === targetUserId) || isHouseholdCreator(hh, viewerId);
-  const d = monthDataFor(hh, mIdx, targetUserId);
+  const d = monthDataFor(hh, mIdx, targetUserId, yIdx);
   const stats = {
     income: totalIncome(d),
     expenses: totalExpenses(d),
@@ -1434,7 +1762,7 @@ function renderFamily(){
 
   const members = hh.memberIds.map(uidKey => DB.users[uidKey]).filter(Boolean);
   const memberStats = members.map(u => {
-    const stats = memberStatsFor(hh, monthIndex, viewerId, u.id);
+    const stats = memberStatsFor(hh, monthIndex, viewerId, u.id, yearIndex);
     return { user: u, ...stats, restricted: !stats.detail };
   });
 
@@ -1547,6 +1875,8 @@ const TAB_RENDERERS = {
   expenses: renderExpenses,
   income: renderIncome,
   bank: renderBank,
+  investments: renderInvestments,
+  savings: renderSavings,
   family: renderFamily,
   emergency: () => { loadEmergencyInputs(); updateEmergency(); }
 };
@@ -1570,15 +1900,16 @@ function renderEverything(){
 /* ============================================================
    MODALS
    ============================================================ */
-function openModal(kind, id){
+function openModal(kind, id, defaultType){
   let html = '';
   if (kind === 'expense') {
     const d = myData();
-    const editing = id ? d.expenses.find(e=>String(e.id)===String(id)) : null;
+    const editing = id ? (d.expensesFixed.find(e=>String(e.id)===String(id)) || d.expensesDaily.find(e=>String(e.id)===String(id))) : null;
+    const typeVal = editing ? editing.type : (defaultType || 'fixed');
     html = `
       <div class="modal-overlay open" id="modal-expense" onclick="closeModalOnBg(event,'modal-expense')">
         <div class="modal" onclick="event.stopPropagation()">
-          <h2>${editing ? 'Edit expense' : 'Add expense'}</h2>
+          <h2>${editing ? 'Edit expense' : (typeVal==='fixed' ? 'Add fixed bill' : 'Add spending entry')}</h2>
           <div class="form-group"><label>Name</label><input type="text" id="exp-name" placeholder="e.g. SBI EMI" value="${editing?editing.name:''}"></div>
           <div class="form-group"><label>Amount (₹)</label><input type="number" id="exp-amount" placeholder="0" value="${editing?editing.amount:''}"></div>
           <div class="form-group"><label>Category</label>
@@ -1588,8 +1919,8 @@ function openModal(kind, id){
           </div>
           <div class="form-group"><label>Type</label>
             <select id="exp-type">
-              <option value="fixed" ${editing&&editing.type==='fixed'?'selected':''}>Fixed (same every month)</option>
-              <option value="variable" ${editing&&editing.type==='variable'?'selected':''}>Variable</option>
+              <option value="fixed" ${typeVal==='fixed'?'selected':''}>Fixed bill (same every month)</option>
+              <option value="variable" ${typeVal==='variable'?'selected':''}>Daily / variable spending</option>
             </select>
           </div>
           <div class="form-group"><label>Paid by</label>
@@ -1619,20 +1950,55 @@ function openModal(kind, id){
         </div>
       </div>`;
   } else if (kind === 'bank') {
+    const acc = myAccounts();
+    const editing = id ? acc.banks.find(b=>String(b.id)===String(id)) : null;
     html = `
       <div class="modal-overlay open" id="modal-bank" onclick="closeModalOnBg(event,'modal-bank')">
         <div class="modal" onclick="event.stopPropagation()">
-          <h2>Connect a bank</h2>
-          <div class="mock-banner"><span>🔒</span><span>Demo connection — simulates a secure bank link (like Account Aggregator/Plaid) without sending real data anywhere.</span></div>
-          <div class="family-pill-list">
-            ${BANK_PRESETS.map((b,i)=>`
-              <div class="family-pill" onclick="connectBank(${i})">
-                <div class="bank-logo" style="background:${b.color}">${b.icon}</div>
-                <div style="font-weight:700;font-size:14px;">${b.name}</div>
-              </div>
-            `).join('')}
+          <h2>${editing ? 'Edit account' : 'Add a bank account'}</h2>
+          <div class="form-group"><label>Bank / account name</label><input type="text" id="inp-bank-name" placeholder="e.g. HDFC Savings" value="${editing ? editing.name : ''}"></div>
+          <div class="form-group"><label>Last 4 digits (optional)</label><input type="text" id="inp-bank-last4" maxlength="4" placeholder="1234" value="${editing && editing.last4 ? editing.last4 : ''}"></div>
+          <div class="form-group"><label>${editing ? 'Current balance' : 'Current real balance'}</label><input type="number" id="inp-bank-balance" placeholder="0" value="${editing ? (editing.balance||0) : ''}"></div>
+          <div style="font-size:11.5px;color:var(--text3);margin-top:-6px;margin-bottom:10px;">This is your real balance as of now. From here, the app keeps it updated automatically each month using the income, expenses, and savings you log — it won't auto-fetch from your bank.</div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-bank')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveBankAccount('${editing ? editing.id : ''}')">Save</button>
           </div>
-          <button class="btn btn-secondary btn-block" onclick="closeModal('modal-bank')">Cancel</button>
+        </div>
+      </div>`;
+  } else if (kind === 'investment') {
+    const acc = myAccounts();
+    const editing = id ? acc.investments.find(i=>String(i.id)===String(id)) : null;
+    html = `
+      <div class="modal-overlay open" id="modal-investment" onclick="closeModalOnBg(event,'modal-investment')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>${editing ? 'Edit holding' : 'Add a holding'}</h2>
+          <div class="form-group"><label>Type</label>
+            <select id="inp-inv-kind">
+              <option value="stock" ${editing && editing.kind==='stock' ? 'selected':''}>Stock</option>
+              <option value="mf" ${editing && editing.kind==='mf' ? 'selected':''}>Mutual fund</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Name</label><input type="text" id="inp-inv-name" placeholder="e.g. HDFC Mid-Cap Fund" value="${editing ? editing.name : ''}"></div>
+          <div class="form-group"><label>Amount invested (cost basis)</label><input type="number" id="inp-inv-invested" placeholder="0" value="${editing ? (editing.invested||'') : ''}"></div>
+          <div class="form-group"><label>Current value</label><input type="number" id="inp-inv-current" placeholder="0" value="${editing ? (editing.currentValue||'') : ''}"></div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-investment')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveInvestment('${editing ? editing.id : ''}')">Save</button>
+          </div>
+        </div>
+      </div>`;
+  } else if (kind === 'savingsGoal') {
+    const acc = myAccounts();
+    html = `
+      <div class="modal-overlay open" id="modal-savingsGoal" onclick="closeModalOnBg(event,'modal-savingsGoal')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>Set savings goal</h2>
+          <div class="form-group"><label>Target amount (bank + investments)</label><input type="number" id="inp-savings-goal" placeholder="0" value="${acc.savingsGoal||''}"></div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-savingsGoal')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveSavingsGoal()">Save</button>
+          </div>
         </div>
       </div>`;
   } else if (kind === 'settings') {
@@ -1705,11 +2071,19 @@ async function saveExpense(editId){
   const paidBy = document.getElementById('exp-paidby').value;
   if (!name || isNaN(amount)) return showToast('Fill in name and amount');
   const d = myData();
+  const targetArr = type === 'fixed' ? d.expensesFixed : d.expensesDaily;
   if (editId) {
-    const e = d.expenses.find(x=>String(x.id)===String(editId));
-    Object.assign(e, { name, amount, cat, type, paidBy });
+    // remove from whichever array currently holds it, then re-insert into the correct one
+    let existing = d.expensesFixed.find(x=>String(x.id)===String(editId));
+    if (existing) d.expensesFixed = d.expensesFixed.filter(x=>String(x.id)!==String(editId));
+    else {
+      existing = d.expensesDaily.find(x=>String(x.id)===String(editId));
+      d.expensesDaily = d.expensesDaily.filter(x=>String(x.id)!==String(editId));
+    }
+    Object.assign(existing, { name, amount, cat, type, paidBy });
+    (type === 'fixed' ? d.expensesFixed : d.expensesDaily).push(existing);
   } else {
-    d.expenses.push({ id: d.nextExpId++, name, amount, cat, type, paidBy });
+    targetArr.push({ id: d.nextExpId++, name, amount, cat, type, paidBy });
   }
   showToast('Saving…');
   await saveStore();
@@ -1736,28 +2110,56 @@ async function saveIncome(editId){
   showToast('Income saved ✓');
 }
 
-async function connectBank(presetIdx){
-  const preset = BANK_PRESETS[presetIdx];
-  const d = myData();
-  const balance = rand(8000, 280000);
-  d.banks.push({
-    id: uid(), name: preset.name, icon: preset.icon, color: preset.color,
-    balance, last4: String(rand(1000,9999))
-  });
+async function saveBankAccount(editId){
+  const acc = myAccounts();
+  const name = document.getElementById('inp-bank-name').value.trim();
+  const last4 = document.getElementById('inp-bank-last4').value.trim();
+  const balance = parseFloat(document.getElementById('inp-bank-balance').value) || 0;
+  if (!name) return showToast('Please enter an account name');
 
-  if (!d.suggestions) d.suggestions = [];
-  const pickCount = rand(2,4);
-  const shuffled = [...SUGGESTION_POOL].sort(()=>Math.random()-0.5).slice(0,pickCount);
-  shuffled.forEach(s => {
-    d.suggestions.push({ name: s.name, cat: s.cat, type: s.type, amount: s.amount(), bank: preset.name });
-  });
-
-  showToast('Connecting…');
+  if (editId) {
+    const b = acc.banks.find(x=>String(x.id)===String(editId));
+    if (b) {
+      b.name = name;
+      b.last4 = last4;
+      b.balance = balance;
+    }
+  } else {
+    const preset = BANK_PRESETS[acc.banks.length % BANK_PRESETS.length];
+    acc.banks.push({
+      id: uid(), name, icon: preset.icon, color: preset.color,
+      last4, balance
+    });
+  }
+  showToast('Saving…');
   await saveStore();
   closeModal('modal-bank');
   renderAll();
-  showToast(`${preset.name} connected`);
+  showToast('Account saved ✓');
 }
+
+async function saveInvestment(editId){
+  const acc = myAccounts();
+  const kind = document.getElementById('inp-inv-kind').value;
+  const name = document.getElementById('inp-inv-name').value.trim();
+  const invested = parseFloat(document.getElementById('inp-inv-invested').value) || 0;
+  const currentValue = parseFloat(document.getElementById('inp-inv-current').value) || 0;
+  if (!name) return showToast('Please enter a name');
+
+  if (editId) {
+    const i = acc.investments.find(x=>String(x.id)===String(editId));
+    if (i) { i.kind = kind; i.name = name; i.invested = invested; i.currentValue = currentValue; }
+  } else {
+    acc.investments.push({ id: acc.nextInvId++, kind, name, invested, currentValue });
+  }
+  showToast('Saving…');
+  await saveStore();
+  closeModal('modal-investment');
+  renderAll();
+  showToast('Holding saved ✓');
+}
+
+
 
 function quickAdd(){
   openModal('expense');
