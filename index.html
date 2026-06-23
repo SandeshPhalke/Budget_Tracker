@@ -716,7 +716,10 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
       </div>
 
       <div class="section">
-        <div class="section-head"><h3>Carried forward into this month</h3></div>
+        <div class="section-head">
+          <h3>Carried forward into this month</h3>
+          <button class="icon-btn" id="sav-carry-edit-btn" onclick="openModal('editCarry')" style="display:none;">✏️</button>
+        </div>
         <div id="sav-carry-list"></div>
       </div>
 
@@ -916,12 +919,17 @@ async function saveStore(){
   if (!DB.session) return;
   const hh = currentHousehold();
   if (!hh) return;
+  // hh.accounts (banks/investments/savings goal/carry-forward) and hh.recurring
+  // (recurring bill templates) are folded into the same JSON blob as hh.data
+  // under reserved keys, since there's no separate database column for either —
+  // without this they were never being saved at all.
+  const payload = { ...hh.data, __accounts__: hh.accounts || {}, __recurring__: hh.recurring || {} };
   await supa.from('households').upsert({
     id: hh.id,
     invite_code: hh.inviteCode,
     name: hh.name,
     member_ids: hh.memberIds,
-    data: hh.data
+    data: payload
   });
   // persist user profile
   const u = currentUser();
@@ -940,12 +948,20 @@ async function refreshFromCloud(){
   if (!u || !u.householdId) return;
   const { data, error } = await supa.from('households').select('*').eq('id', u.householdId).single();
   if (!error && data) {
+    const raw = data.data || {};
+    const accounts = raw.__accounts__ || {};
+    const recurring = raw.__recurring__ || {};
+    const monthData = { ...raw };
+    delete monthData.__accounts__;
+    delete monthData.__recurring__;
     DB.households[data.id] = {
       id: data.id,
       name: data.name,
       inviteCode: data.invite_code,
       memberIds: data.member_ids,
-      data: data.data || {}
+      data: monthData,
+      accounts: accounts,
+      recurring: recurring
     };
     // also pull all household members' profiles
     const { data: members } = await supa.from('users').select('*').in('id', data.member_ids);
@@ -1351,7 +1367,9 @@ function periodIsPast(y, m){
    out at month-end. We walk forward from the last-applied period to "today",
    applying every completed month we haven't applied yet. This naturally carries
    leftover (or shortfall) forward without ever double-counting it, and it works
-   correctly with any number of accounts since each keeps one running balance. */
+   correctly with any number of accounts since each keeps one running balance.
+   We also remember the most recent carry-forward amount/source month so it can
+   be shown on the Savings tab and corrected by hand if it's wrong. */
 function applyCompletedMonthsToBalance(){
   const hh = currentHousehold();
   const acc = myAccounts();
@@ -1379,6 +1397,7 @@ function applyCompletedMonthsToBalance(){
           b.balance = (b.balance||0) + net * share;
         });
       }
+      acc.lastCarryForward = { amount: net, fromPeriod: { y, m } };
     }
     acc.lastAppliedPeriod = { y, m };
     appliedAny = true;
@@ -1386,6 +1405,30 @@ function applyCompletedMonthsToBalance(){
     y = nxt.y; m = nxt.m;
   }
   if (appliedAny) saveStore();
+}
+
+/* Correct the most recent carry-forward amount by hand. We apply only the
+   difference between the new and old amount to the bank balances (split the
+   same proportional way), so this never double-counts the part that was
+   already applied. */
+async function editCarryForward(newAmount){
+  const acc = myAccounts();
+  if (!acc.lastCarryForward) return;
+  const oldAmount = acc.lastCarryForward.amount || 0;
+  const delta = newAmount - oldAmount;
+  if (delta !== 0 && acc.banks.length) {
+    const totalStarting = acc.banks.reduce((a,b)=>a+(b.balance||0), 0);
+    acc.banks.forEach(b => {
+      const share = totalStarting > 0 ? (b.balance||0)/totalStarting : 1/acc.banks.length;
+      b.balance = (b.balance||0) + delta * share;
+    });
+  }
+  acc.lastCarryForward.amount = newAmount;
+  logTransaction(myData(), { kind: 'account', action: 'edited', name: 'Carried forward amount corrected', amount: newAmount });
+  await saveStore();
+  closeModal('modal-editCarry');
+  renderAll();
+  showToast('Carried-forward amount updated ✓');
 }
 
 /* For display only: the current (not-yet-closed) month's running balance is the
@@ -1793,24 +1836,24 @@ function renderSavings(){
   document.getElementById('sav-goal-current').textContent = fmt(netWorth)+' saved';
   document.getElementById('sav-goal-target').textContent = goal>0 ? 'Goal '+fmt(goal) : 'No goal set yet';
 
-  // last month's net result — this is what got carried into the running balance
+  // the actual amount that was applied to the bank balance — editable, so we read
+  // it from acc.lastCarryForward rather than recalculating it live
   const carryList = document.getElementById('sav-carry-list');
-  const { y: py, m: pm } = prevPeriod(yearIndex, monthIndex);
-  const prev = hh.data[periodKey(py, pm)] && hh.data[periodKey(py, pm)][DB.session];
-  if (!prev || !(prev.income.length || allExpenses(prev).length)) {
+  const editBtn = document.getElementById('sav-carry-edit-btn');
+  const lc = acc.lastCarryForward;
+  if (!lc) {
     carryList.innerHTML = `<div class="empty-state"><div class="ic">↪️</div><div class="t">No prior month's data to carry forward yet.</div></div>`;
+    editBtn.style.display = 'none';
   } else {
-    const pIncome = prev.income.reduce((a,i)=>a+i.amount,0);
-    const pExpenses = allExpenses(prev).filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0);
-    const pSavings = allExpenses(prev).filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0);
-    const pNet = pIncome - pExpenses - pSavings;
+    const { y: py, m: pm } = lc.fromPeriod;
     carryList.innerHTML = `
       <div class="row">
         <div class="row-icon">↪️</div>
         <div class="row-info"><div class="row-name">From ${MONTHS[pm]} ${py}</div></div>
-        <div class="row-amount num" style="color:${pNet>=0?'var(--mint)':'var(--coral)'}">${pNet>=0?'+':''}${fmt(pNet)}</div>
+        <div class="row-amount num" style="color:${lc.amount>=0?'var(--mint)':'var(--coral)'}">${lc.amount>=0?'+':''}${fmt(lc.amount)}</div>
       </div>
     `;
+    editBtn.style.display = '';
   }
 
   // last 6 months history (including current), oldest first
@@ -2283,6 +2326,22 @@ function openModal(kind, id, defaultType){
           <div class="modal-btns">
             <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-savingsGoal')">Cancel</button>
             <button class="btn btn-primary" style="flex:1" onclick="saveSavingsGoal()">Save</button>
+          </div>
+        </div>
+      </div>`;
+  } else if (kind === 'editCarry') {
+    const acc = myAccounts();
+    const lc = acc.lastCarryForward;
+    const label = lc ? (MONTHS[lc.fromPeriod.m] + ' ' + lc.fromPeriod.y) : '';
+    html = `
+      <div class="modal-overlay open" id="modal-editCarry" onclick="closeModalOnBg(event,'modal-editCarry')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>Edit carried-forward amount</h2>
+          <div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;">This corrects how much was carried into this month from ${label}. The difference between the old and new amount is applied to your bank balance right away — nothing else changes.</div>
+          <div class="form-group"><label>Correct amount</label><input type="number" id="inp-carry-amount" placeholder="0" value="${lc?lc.amount:0}"></div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-editCarry')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="editCarryForward(parseFloat(document.getElementById('inp-carry-amount').value)||0)">Save</button>
           </div>
         </div>
       </div>`;
