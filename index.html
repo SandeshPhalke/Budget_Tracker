@@ -201,6 +201,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 /* tabs */
 .tabs { display: flex; gap: 5px; margin-bottom: 18px; background: var(--surface); padding: 5px; border-radius: var(--radius); border: 0.5px solid var(--border); overflow-x: auto; }
 .tab { flex: 1; min-width: max-content; padding: 9px 14px; text-align: center; font-size: 13px; font-weight: 600; border-radius: 11px; cursor: pointer; border: none; background: none; color: var(--text2); white-space: nowrap; transition: all .15s; }
+.txn-filter-pill { flex: 0 0 auto; padding: 7px 13px; font-size: 12.5px; background: var(--bg-deep); }
 .tab.active { background: var(--mint); color: #102015; }
 .tab-panel { display: none; animation: fadeIn .25s ease; }
 .tab-panel.active { display: block; }
@@ -551,6 +552,7 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
       <button class="tab" data-tab="investments" onclick="switchTab('investments')">Investments</button>
       <button class="tab" data-tab="savings" onclick="switchTab('savings')">Savings</button>
       <button class="tab" data-tab="family" onclick="switchTab('family')">Family</button>
+      <button class="tab" data-tab="transactions" onclick="switchTab('transactions')">Transactions</button>
       <button class="tab" data-tab="emergency" onclick="switchTab('emergency')">Emergency</button>
     </div>
 
@@ -735,6 +737,24 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
 
       <div class="section">
         <div class="section-head">
+          <h3>Who paid what (shared bills)</h3>
+        </div>
+        <div style="padding:4px 18px 0;font-size:12px;color:var(--text3);">Based on bills you've ticked "Shared household bill" while logging your own expenses.</div>
+        <div id="payer-summary-list"></div>
+      </div>
+
+      <div class="section" id="settle-up-section">
+        <div class="section-head"><h3>Settle up</h3></div>
+        <div id="settle-up-content" style="padding:14px 18px;"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h3>Shared bill history</h3></div>
+        <div id="shared-bill-list"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
           <h3>Invite family</h3>
         </div>
         <div style="padding:16px 18px;">
@@ -745,6 +765,22 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- TRANSACTIONS LOG -->
+    <div class="tab-panel" id="tab-transactions">
+      <div class="section" style="padding:18px 18px 4px; background:none; border:none; margin-bottom:8px;">
+        <h3 style="margin-bottom:4px;">Transaction history</h3>
+        <div style="font-size:12px;color:var(--text3);">Every expense, income, account, and holding change you've made this month, newest first.</div>
+      </div>
+      <div class="filter-pills" style="display:flex;gap:8px;padding:0 18px 12px;flex-wrap:wrap;">
+        <button class="tab txn-filter-pill active" data-txn-filter="all" onclick="setTxnFilter('all')">All</button>
+        <button class="tab txn-filter-pill" data-txn-filter="expense" onclick="setTxnFilter('expense')">Expenses</button>
+        <button class="tab txn-filter-pill" data-txn-filter="income" onclick="setTxnFilter('income')">Income</button>
+        <button class="tab txn-filter-pill" data-txn-filter="account" onclick="setTxnFilter('account')">Accounts</button>
+        <button class="tab txn-filter-pill" data-txn-filter="investment" onclick="setTxnFilter('investment')">Investments</button>
+      </div>
+      <div id="transaction-list"></div>
     </div>
 
     <!-- EMERGENCY FUND -->
@@ -1153,6 +1189,49 @@ function myAccounts(){
   return accountsFor(currentHousehold(), DB.session);
 }
 
+/* ============================================================
+   RECURRING FIXED BILLS — templates that auto-generate into
+   every applicable month until an optional end month.
+   ============================================================ */
+function recurringBillsFor(hh, userId){
+  if (!hh.recurring) hh.recurring = {};
+  if (!hh.recurring[userId]) hh.recurring[userId] = { templates: [], nextId: 1 };
+  const r = hh.recurring[userId];
+  if (!r.templates) r.templates = [];
+  if (!r.nextId) r.nextId = 1;
+  return r;
+}
+function myRecurring(){
+  return recurringBillsFor(currentHousehold(), DB.session);
+}
+/* y1/m1 <= y2/m2 ? */
+function periodLte(y1, m1, y2, m2){
+  if (y1 !== y2) return y1 < y2;
+  return m1 <= m2;
+}
+function templateAppliesTo(tpl, y, m){
+  if (!periodLte(tpl.startPeriod.y, tpl.startPeriod.m, y, m)) return false;
+  if (tpl.endPeriod && !periodLte(y, m, tpl.endPeriod.y, tpl.endPeriod.m)) return false;
+  return true;
+}
+/* Inject any recurring templates that apply to (y,m) and aren't already present
+   (by recurringId) or explicitly skipped for this month, directly into the month's
+   expensesFixed array. Idempotent — safe to call every time the month is opened. */
+function seedRecurringBillsIntoMonth(data, hh, userId, y, m){
+  const r = recurringBillsFor(hh, userId);
+  if (!data.skippedRecurringIds) data.skippedRecurringIds = [];
+  r.templates.forEach(tpl => {
+    if (!templateAppliesTo(tpl, y, m)) return;
+    if (data.skippedRecurringIds.includes(tpl.id)) return;
+    const already = data.expensesFixed.find(e => e.recurringId === tpl.id);
+    if (already) return;
+    data.expensesFixed.push({
+      id: data.nextExpId++, name: tpl.name, amount: tpl.amount, cat: tpl.cat,
+      type: 'fixed', paidBy: tpl.paidBy, shared: tpl.shared, recurringId: tpl.id
+    });
+  });
+}
+
 function monthDataFor(hh, mIdx, userId, yIdx){
   const y = (yIdx === undefined) ? yearIndex : yIdx;
   const mKey = periodKey(y, mIdx);
@@ -1166,6 +1245,7 @@ function monthDataFor(hh, mIdx, userId, yIdx){
       expensesFixed: [],
       expensesDaily: [],
       income: [],
+      transactions: [],
       emergency: { months: 6, current: 0, timeline: 12 },
       nextExpId: 1,
       nextIncId: 1,
@@ -1182,6 +1262,8 @@ function monthDataFor(hh, mIdx, userId, yIdx){
   }
   if (!data.expensesFixed) data.expensesFixed = [];
   if (!data.expensesDaily) data.expensesDaily = [];
+  if (!data.transactions) data.transactions = [];
+  seedRecurringBillsIntoMonth(data, hh, userId, y, mIdx);
 
   // one-time migration: pull any banks/investments/savingsGoal that used to live
   // on this specific month over into the new persistent accounts store
@@ -1206,6 +1288,21 @@ function monthDataFor(hh, mIdx, userId, yIdx){
 }
 
 function allExpenses(d){ return [...d.expensesFixed, ...d.expensesDaily]; }
+
+/* ============================================================
+   TRANSACTIONS LOG — a running, timestamped history of every
+   expense/income add/edit/delete, kept per month per user.
+   ============================================================ */
+function logTransaction(d, entry){
+  if (!d.transactions) d.transactions = [];
+  d.transactions.unshift({
+    id: uid(),
+    at: new Date().toISOString(),
+    ...entry
+  });
+  // keep history bounded so storage doesn't grow unbounded
+  if (d.transactions.length > 300) d.transactions.length = 300;
+}
 
 function myData(){
   return monthDataFor(currentHousehold(), monthIndex, DB.session, yearIndex);
@@ -1477,13 +1574,16 @@ function memberChip(userId){
 }
 
 function expenseRowHtml(e){
+  const payerName = e.paidBy && DB.users[e.paidBy] ? DB.users[e.paidBy].name.split(' ')[0] : '';
   return `
       <div class="row">
         <div class="row-icon">${ICONS[e.cat]||'💰'}</div>
         <div class="row-info">
-          <div class="row-name">${e.name}</div>
-          <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;">
+          <div class="row-name">${e.name}${e.recurringId ? ' <span title="Repeats every month" style="font-size:11px;">🔁</span>' : ''}</div>
+          <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;align-items:center;">
             <span class="tag tag-${e.cat==='emi'?'emi':e.cat==='savings'?'saving':(e.type==='rollover'?'rollover':e.type)}">${LABELS[e.cat]||e.cat}</span>
+            ${e.shared ? '<span class="tag" style="background:var(--lav-bg);color:var(--lav-text);">Shared</span>' : ''}
+            ${payerName ? `<span style="font-size:11px;color:var(--text3);">Paid by ${payerName}</span>` : ''}
           </div>
         </div>
         <div class="row-amount expense num">${fmt(e.amount)}</div>
@@ -1542,14 +1642,36 @@ function renderIncome(){
 
 async function deleteExpense(id){
   const d = myData();
+  const existing = d.expensesFixed.find(e=>String(e.id)===String(id)) || d.expensesDaily.find(e=>String(e.id)===String(id));
+  if (!existing) return;
+
+  if (existing.recurringId) {
+    const stopForever = await confirmDialog(
+      'This is a repeating bill',
+      'Do you want to remove it from just this month, or stop it from repeating in future months too?',
+      'Just this month', 'Stop repeating'
+    );
+    if (stopForever) {
+      const r = myRecurring();
+      const tpl = r.templates.find(t=>t.id===existing.recurringId);
+      if (tpl) tpl.endPeriod = prevPeriod(yearIndex, monthIndex); // ends before this month
+    } else {
+      if (!d.skippedRecurringIds) d.skippedRecurringIds = [];
+      d.skippedRecurringIds.push(existing.recurringId);
+    }
+  }
+
   d.expensesFixed = d.expensesFixed.filter(e=>String(e.id)!==String(id));
   d.expensesDaily = d.expensesDaily.filter(e=>String(e.id)!==String(id));
+  logTransaction(d, { kind: 'expense', action: 'deleted', name: existing.name, amount: existing.amount, cat: existing.cat, paidBy: existing.paidBy, shared: existing.shared });
   await saveStore(); renderAll();
   showToast('Expense removed');
 }
 async function deleteIncome(id){
   const d = myData();
+  const existing = d.income.find(i=>String(i.id)===String(id));
   d.income = d.income.filter(i=>String(i.id)!==String(id));
+  if (existing) logTransaction(d, { kind: 'income', action: 'deleted', name: existing.name, amount: existing.amount });
   await saveStore(); renderAll();
   showToast('Income removed');
 }
@@ -1587,7 +1709,9 @@ function renderBank(){
 
 async function disconnectBank(id){
   const acc = myAccounts();
+  const existing = acc.banks.find(b=>b.id===id);
   acc.banks = acc.banks.filter(b=>b.id!==id);
+  if (existing) logTransaction(myData(), { kind: 'account', action: 'removed', name: existing.name, amount: existing.balance||0 });
   await saveStore(); renderAll();
   showToast('Account removed');
 }
@@ -1641,7 +1765,9 @@ function renderInvestments(){
 
 async function deleteInvestment(id){
   const acc = myAccounts();
+  const existing = acc.investments.find(i=>String(i.id)===String(id));
   acc.investments = acc.investments.filter(i=>String(i.id)!==String(id));
+  if (existing) logTransaction(myData(), { kind: 'investment', action: 'removed', name: existing.name, amount: existing.currentValue||0 });
   await saveStore(); renderAll();
   showToast('Holding removed');
 }
@@ -1722,7 +1848,57 @@ async function saveSavingsGoal(){
   showToast('Savings goal updated ✓');
 }
 
+/* ============================================================
+   RENDER: TRANSACTIONS LOG
+   ============================================================ */
+let txnFilter = 'all';
+function setTxnFilter(kind){
+  txnFilter = kind;
+  document.querySelectorAll('.txn-filter-pill').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.txnFilter === kind);
+  });
+  renderTransactions();
+}
 
+const TXN_ICONS = { expense: '🧾', income: '💵', account: '🏦', investment: '📈' };
+const TXN_ACTION_LABEL = { added: 'Added', edited: 'Edited', deleted: 'Deleted', removed: 'Removed' };
+
+function txnTimeLabel(iso){
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const datePart = sameDay ? 'Today' : d.toLocaleDateString(undefined, { day:'numeric', month:'short' });
+  const timePart = d.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+  return datePart + ' · ' + timePart;
+}
+
+function renderTransactions(){
+  const d = myData();
+  const list = document.getElementById('transaction-list');
+  if (!document.querySelector('.txn-filter-pill.active')) {
+    const allBtn = document.querySelector('.txn-filter-pill[data-txn-filter="all"]');
+    if (allBtn) allBtn.classList.add('active');
+  }
+  const txns = (d.transactions || []).filter(t => txnFilter === 'all' || t.kind === txnFilter);
+  if (!txns.length) {
+    list.innerHTML = `<div class="empty-state"><div class="ic">📜</div><div class="t">No transactions logged yet this month. Every add, edit, or delete will show up here with a timestamp.</div></div>`;
+    return;
+  }
+  list.innerHTML = txns.map(t => {
+    const isNegative = t.kind === 'expense' && t.action !== 'deleted';
+    const color = t.action === 'deleted' || t.action === 'removed' ? 'var(--text3)' : (t.kind === 'income' ? 'var(--mint)' : 'var(--text)');
+    const sign = t.kind === 'income' && t.action !== 'deleted' ? '+' : (isNegative ? '-' : '');
+    return `
+      <div class="row">
+        <div class="row-icon">${TXN_ICONS[t.kind] || '•'}</div>
+        <div class="row-info">
+          <div class="row-name">${t.name}${t.shared ? ' <span class="tag" style="margin-left:4px;">Shared</span>' : ''}</div>
+          <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">${TXN_ACTION_LABEL[t.action]||t.action||''} · ${txnTimeLabel(t.at)}${t.paidBy && DB.users[t.paidBy] ? ' · ' + DB.users[t.paidBy].name : ''}</div>
+        </div>
+        <div class="row-amount num" style="color:${color};text-decoration:${t.action==='deleted'||t.action==='removed'?'line-through':'none'}">${sign}${fmt(t.amount||0)}</div>
+      </div>`;
+  }).join('');
+}
 
 
 /* ============================================================
@@ -1803,6 +1979,92 @@ function renderFamily(){
   constellation.innerHTML = html;
 
   document.getElementById('family-month-label').textContent = MONTHS[monthIndex];
+  renderPayerSummary();
+}
+
+/* ============================================================
+   WHO PAID WHAT + SETTLE UP (based on bills you've tagged
+   "shared" while logging your own expenses, split evenly
+   between you and whichever member you marked as payer)
+   ============================================================ */
+function renderPayerSummary(){
+  const d = myData();
+  const shared = allExpenses(d).filter(e=>e.shared);
+  const summaryList = document.getElementById('payer-summary-list');
+  const billList = document.getElementById('shared-bill-list');
+  const settleContent = document.getElementById('settle-up-content');
+
+  if (!shared.length) {
+    summaryList.innerHTML = `<div class="empty-state"><div class="ic">🤝</div><div class="t">No shared bills logged this month. Tick "Shared household bill" when adding an expense to track it here.</div></div>`;
+    billList.innerHTML = '';
+    settleContent.innerHTML = `<div style="font-size:13px;color:var(--text3);">Nothing to settle yet.</div>`;
+    return;
+  }
+
+  // total paid by each payer, across this month's shared bills
+  const totals = {};
+  shared.forEach(e => {
+    const who = e.paidBy || DB.session;
+    totals[who] = (totals[who] || 0) + e.amount;
+  });
+  const payerIds = Object.keys(totals);
+  const grandTotal = Object.values(totals).reduce((a,b)=>a+b,0);
+
+  summaryList.innerHTML = payerIds.map(pid => {
+    const u = DB.users[pid];
+    const name = u ? u.name : 'Unknown';
+    const pct = grandTotal ? Math.round(totals[pid]/grandTotal*100) : 0;
+    return `
+      <div class="row">
+        <div class="row-icon"><span class="avatar-dot dot" style="background:${u?MEMBER_COLORS[u.color]||'var(--mint)':'var(--mint)'};width:30px;height:30px;font-size:12px;">${name[0].toUpperCase()}</span></div>
+        <div class="row-info">
+          <div class="row-name">${name}${pid===DB.session?' (you)':''}</div>
+          <div class="progress-bar" style="height:5px;margin-top:6px;background:var(--bg-deep)">
+            <div class="progress-fill" style="width:${pct}%;background:var(--lav)"></div>
+          </div>
+        </div>
+        <div class="row-amount num" style="color:var(--text)">${fmt(totals[pid])}</div>
+      </div>`;
+  }).join('');
+
+  billList.innerHTML = shared.map(e => {
+    const u = DB.users[e.paidBy];
+    return `
+      <div class="row">
+        <div class="row-icon">${ICONS[e.cat]||'💰'}</div>
+        <div class="row-info">
+          <div class="row-name">${e.name}</div>
+          <div style="font-size:11.5px;color:var(--text3);">Paid by ${u?u.name:'Unknown'}</div>
+        </div>
+        <div class="row-amount num" style="color:var(--text)">${fmt(e.amount)}</div>
+      </div>`;
+  }).join('');
+
+  // settle-up: assumes an even split between exactly two payers (the common case for a couple).
+  // With more than two payers shown, we still show each person's fair share vs what they paid.
+  const fairShare = grandTotal / payerIds.length;
+  const balances = payerIds.map(pid => ({ pid, name: DB.users[pid]?DB.users[pid].name:'Unknown', diff: totals[pid] - fairShare }));
+  const owed = balances.filter(b=>b.diff < -1).sort((a,b)=>a.diff-b.diff);
+  const owes = balances.filter(b=>b.diff > 1).sort((a,b)=>b.diff-a.diff);
+
+  if (!owed.length || !owes.length) {
+    settleContent.innerHTML = `<div style="font-size:13px;color:var(--mint-text);">✓ Everyone's even — no one owes anything for shared bills this month.</div>`;
+  } else {
+    // simple greedy match between who-overpaid and who-underpaid
+    const rows = [];
+    let oi = 0, wi = 0;
+    const owedPool = owed.map(o=>({...o, remaining: -o.diff}));
+    const owesPool = owes.map(o=>({...o, remaining: o.diff}));
+    while (oi < owedPool.length && wi < owesPool.length) {
+      const give = owesPool[wi], get = owedPool[oi];
+      const amt = Math.min(give.remaining, get.remaining);
+      if (amt > 1) rows.push(`<b>${give.name}</b> owes <b>${get.name}</b> <span class="num">${fmt(amt)}</span>`);
+      give.remaining -= amt; get.remaining -= amt;
+      if (give.remaining <= 1) wi++;
+      if (get.remaining <= 1) oi++;
+    }
+    settleContent.innerHTML = rows.map(r=>`<div style="font-size:14px;margin-bottom:8px;">${r}</div>`).join('');
+  }
 }
 
 /* ============================================================
@@ -1878,6 +2140,7 @@ const TAB_RENDERERS = {
   investments: renderInvestments,
   savings: renderSavings,
   family: renderFamily,
+  transactions: renderTransactions,
   emergency: () => { loadEmergencyInputs(); updateEmergency(); }
 };
 
@@ -1906,6 +2169,9 @@ function openModal(kind, id, defaultType){
     const d = myData();
     const editing = id ? (d.expensesFixed.find(e=>String(e.id)===String(id)) || d.expensesDaily.find(e=>String(e.id)===String(id))) : null;
     const typeVal = editing ? editing.type : (defaultType || 'fixed');
+    const tpl = editing && editing.recurringId ? myRecurring().templates.find(t=>t.id===editing.recurringId) : null;
+    const isRecurring = !!tpl;
+    const hasEnd = tpl && tpl.endPeriod;
     html = `
       <div class="modal-overlay open" id="modal-expense" onclick="closeModalOnBg(event,'modal-expense')">
         <div class="modal" onclick="event.stopPropagation()">
@@ -1918,7 +2184,7 @@ function openModal(kind, id, defaultType){
             </select>
           </div>
           <div class="form-group"><label>Type</label>
-            <select id="exp-type">
+            <select id="exp-type" onchange="toggleRecurringFields()">
               <option value="fixed" ${typeVal==='fixed'?'selected':''}>Fixed bill (same every month)</option>
               <option value="variable" ${typeVal==='variable'?'selected':''}>Daily / variable spending</option>
             </select>
@@ -1927,6 +2193,25 @@ function openModal(kind, id, defaultType){
             <select id="exp-paidby">
               ${currentHousehold().memberIds.map(m=>`<option value="${m}" ${editing&&editing.paidBy===m||(!editing&&m===DB.session)?'selected':''}>${DB.users[m].name}${m===DB.session?' (you)':''}</option>`).join('')}
             </select>
+          </div>
+          <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="exp-shared" style="width:18px;height:18px;" ${editing&&editing.shared?'checked':''}>
+            <label style="margin:0;" for="exp-shared">Shared household bill (counts toward who-owes-whom)</label>
+          </div>
+          <div id="exp-recurring-fields" style="display:${typeVal==='fixed'?'':'none'};">
+            <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="exp-recurring" style="width:18px;height:18px;" ${(!editing || isRecurring) ? 'checked' : ''} onchange="toggleRecurringEnd()">
+              <label style="margin:0;" for="exp-recurring">Repeat every month</label>
+            </div>
+            <div id="exp-recurring-end-wrap" class="form-group" style="display:${(!editing||isRecurring)?'':'none'};">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="exp-has-end" style="width:18px;height:18px;" ${hasEnd?'checked':''} onchange="document.getElementById('exp-end-month-wrap').style.display=this.checked?'':'none'">
+                Stop repeating after a certain month
+              </label>
+              <div id="exp-end-month-wrap" style="display:${hasEnd?'':'none'};margin-top:8px;">
+                <input type="month" id="exp-end-month" value="${hasEnd ? (tpl.endPeriod.y+'-'+String(tpl.endPeriod.m+1).padStart(2,'0')) : ''}">
+              </div>
+            </div>
           </div>
           <div class="modal-btns">
             <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-expense')">Cancel</button>
@@ -2063,27 +2348,98 @@ function closeModalOnBg(e, id){
   closeModal(id);
 }
 
+/* Promise-based 2-choice confirm dialog (returns true for the "forward" choice,
+   false for the "just this" choice). Used for recurring-bill edit/delete prompts. */
+function confirmDialog(title, body, choiceA, choiceB){
+  return new Promise(resolve => {
+    const html = `
+      <div class="modal-overlay open" id="modal-confirm-dialog">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>${title}</h2>
+          <div style="font-size:13px;color:var(--text3);margin-bottom:14px;">${body}</div>
+          <div class="modal-btns" style="flex-direction:column;gap:8px;">
+            <button class="btn btn-secondary btn-block" id="confirm-choice-a">${choiceA}</button>
+            <button class="btn btn-primary btn-block" id="confirm-choice-b">${choiceB}</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('modal-root').insertAdjacentHTML('beforeend', html);
+    const cleanup = (result) => { closeModal('modal-confirm-dialog'); resolve(result); };
+    document.getElementById('confirm-choice-a').onclick = () => cleanup(false);
+    document.getElementById('confirm-choice-b').onclick = () => cleanup(true);
+  });
+}
+
+function toggleRecurringFields(){
+  const isFixed = document.getElementById('exp-type').value === 'fixed';
+  document.getElementById('exp-recurring-fields').style.display = isFixed ? '' : 'none';
+}
+function toggleRecurringEnd(){
+  document.getElementById('exp-recurring-end-wrap').style.display = document.getElementById('exp-recurring').checked ? '' : 'none';
+}
+
+function parseEndMonthInput(){
+  const v = document.getElementById('exp-has-end').checked ? document.getElementById('exp-end-month').value : '';
+  if (!v) return null;
+  const [y, m] = v.split('-').map(Number);
+  return { y, m: m-1 };
+}
+
 async function saveExpense(editId){
   const name = document.getElementById('exp-name').value.trim();
   const amount = parseFloat(document.getElementById('exp-amount').value);
   const cat = document.getElementById('exp-cat').value;
   const type = document.getElementById('exp-type').value;
   const paidBy = document.getElementById('exp-paidby').value;
+  const shared = document.getElementById('exp-shared').checked;
+  const wantsRecurring = type === 'fixed' && document.getElementById('exp-recurring').checked;
+  const endPeriod = type === 'fixed' ? parseEndMonthInput() : null;
   if (!name || isNaN(amount)) return showToast('Fill in name and amount');
   const d = myData();
-  const targetArr = type === 'fixed' ? d.expensesFixed : d.expensesDaily;
+  const r = myRecurring();
+
   if (editId) {
-    // remove from whichever array currently holds it, then re-insert into the correct one
     let existing = d.expensesFixed.find(x=>String(x.id)===String(editId));
-    if (existing) d.expensesFixed = d.expensesFixed.filter(x=>String(x.id)!==String(editId));
-    else {
-      existing = d.expensesDaily.find(x=>String(x.id)===String(editId));
-      d.expensesDaily = d.expensesDaily.filter(x=>String(x.id)!==String(editId));
+    const fromFixed = !!existing;
+    if (!existing) existing = d.expensesDaily.find(x=>String(x.id)===String(editId));
+    const oldRecurringId = existing.recurringId;
+
+    // If this row is tied to a recurring template and there's more than just this
+    // month affected, ask whether the change should apply going forward too.
+    let applyForward = false;
+    if (oldRecurringId) {
+      applyForward = await confirmDialog('Apply this change to future months too?', 'This bill repeats. You can update just this month, or this and every month after it.', 'Just this month', 'This & future months');
     }
-    Object.assign(existing, { name, amount, cat, type, paidBy });
+
+    if (fromFixed) d.expensesFixed = d.expensesFixed.filter(x=>String(x.id)!==String(editId));
+    else d.expensesDaily = d.expensesDaily.filter(x=>String(x.id)!==String(editId));
+    Object.assign(existing, { name, amount, cat, type, paidBy, shared });
+
+    if (oldRecurringId && applyForward) {
+      // update the template itself so future months pick up the new values
+      const tpl = r.templates.find(t=>t.id===oldRecurringId);
+      if (tpl) { tpl.name=name; tpl.amount=amount; tpl.cat=cat; tpl.paidBy=paidBy; tpl.shared=shared; tpl.endPeriod = endPeriod; }
+      existing.recurringId = oldRecurringId;
+    } else if (oldRecurringId && !applyForward) {
+      // detach this month's copy from the template so future months keep the old template values
+      delete existing.recurringId;
+    } else if (!oldRecurringId && wantsRecurring && type==='fixed') {
+      // turning a one-off bill into a recurring one, starting from this month
+      const tpl = { id: r.nextId++, name, amount, cat, paidBy, shared, startPeriod: { y: yearIndex, m: monthIndex }, endPeriod };
+      r.templates.push(tpl);
+      existing.recurringId = tpl.id;
+    }
     (type === 'fixed' ? d.expensesFixed : d.expensesDaily).push(existing);
+    logTransaction(d, { kind: 'expense', action: 'edited', name, amount, cat, paidBy, shared });
   } else {
-    targetArr.push({ id: d.nextExpId++, name, amount, cat, type, paidBy });
+    const entry = { id: d.nextExpId++, name, amount, cat, type, paidBy, shared };
+    if (wantsRecurring) {
+      const tpl = { id: r.nextId++, name, amount, cat, paidBy, shared, startPeriod: { y: yearIndex, m: monthIndex }, endPeriod };
+      r.templates.push(tpl);
+      entry.recurringId = tpl.id;
+    }
+    (type === 'fixed' ? d.expensesFixed : d.expensesDaily).push(entry);
+    logTransaction(d, { kind: 'expense', action: 'added', name, amount, cat, paidBy, shared });
   }
   showToast('Saving…');
   await saveStore();
@@ -2100,8 +2456,10 @@ async function saveIncome(editId){
   if (editId) {
     const i = d.income.find(x=>String(x.id)===String(editId));
     Object.assign(i, { name, amount });
+    logTransaction(d, { kind: 'income', action: 'edited', name, amount });
   } else {
     d.income.push({ id: d.nextIncId++, name, amount, paidBy: DB.session });
+    logTransaction(d, { kind: 'income', action: 'added', name, amount });
   }
   showToast('Saving…');
   await saveStore();
@@ -2124,12 +2482,14 @@ async function saveBankAccount(editId){
       b.last4 = last4;
       b.balance = balance;
     }
+    logTransaction(myData(), { kind: 'account', action: 'edited', name, amount: balance });
   } else {
     const preset = BANK_PRESETS[acc.banks.length % BANK_PRESETS.length];
     acc.banks.push({
       id: uid(), name, icon: preset.icon, color: preset.color,
       last4, balance
     });
+    logTransaction(myData(), { kind: 'account', action: 'added', name, amount: balance });
   }
   showToast('Saving…');
   await saveStore();
@@ -2149,8 +2509,10 @@ async function saveInvestment(editId){
   if (editId) {
     const i = acc.investments.find(x=>String(x.id)===String(editId));
     if (i) { i.kind = kind; i.name = name; i.invested = invested; i.currentValue = currentValue; }
+    logTransaction(myData(), { kind: 'investment', action: 'edited', name, amount: currentValue });
   } else {
     acc.investments.push({ id: acc.nextInvId++, kind, name, invested, currentValue });
+    logTransaction(myData(), { kind: 'investment', action: 'added', name, amount: currentValue });
   }
   showToast('Saving…');
   await saveStore();
