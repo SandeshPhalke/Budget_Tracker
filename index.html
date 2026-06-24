@@ -605,13 +605,12 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
       <button class="tab active" data-tab="overview" onclick="switchTab('overview')">Overview</button>
       <button class="tab" data-tab="expenses" onclick="switchTab('expenses')">Expenses</button>
       <button class="tab" data-tab="income" onclick="switchTab('income')">Income</button>
-      <button class="tab" data-tab="bank" onclick="switchTab('bank')">Accounts</button>
+      <button class="tab" data-tab="planning" onclick="switchTab('planning')">Next Month</button>
       <button class="tab" data-tab="investments" onclick="switchTab('investments')">Investments</button>
       <button class="tab" data-tab="loans" onclick="switchTab('loans')">Loans</button>
       <button class="tab" data-tab="savings" onclick="switchTab('savings')">Savings</button>
       <button class="tab" data-tab="family" onclick="switchTab('family')">Family</button>
       <button class="tab" data-tab="transactions" onclick="switchTab('transactions')">Transactions</button>
-      <button class="tab" data-tab="emergency" onclick="switchTab('emergency')">Emergency</button>
     </div>
 
     <!-- OVERVIEW -->
@@ -701,16 +700,47 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
     </div>
 
     <!-- BANK / ACCOUNTS -->
-    <div class="tab-panel" id="tab-bank">
+    <!-- NEXT MONTH PLANNING -->
+    <div class="tab-panel" id="tab-planning">
       <div class="section" style="padding:18px 18px 4px; background:none; border:none; margin-bottom:8px;">
-        <h3 style="margin-bottom:4px;">Your accounts</h3>
-        <div style="font-size:12px;color:var(--text3);">Enter your real starting balance once — the app then keeps it updated using your income, expenses, and any carried-forward surplus.</div>
+        <h3 style="margin-bottom:4px;">Plan <span id="plan-month-label">next month</span></h3>
+        <div style="font-size:12px;color:var(--text3);">Anything recurring already shows up here automatically. Add anything extra you know is coming, before that month even starts.</div>
       </div>
-      <div id="bank-list"></div>
-      <div class="connect-bank-card" onclick="openModal('bank')">
-        <div class="ic">🏦</div>
-        <div class="t">Add a bank account</div>
-        <div class="s">Enter your real starting balance</div>
+      <div class="summary-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="card c-income">
+          <div class="card-label">Planned income</div>
+          <div class="card-value num" id="plan-income">₹0</div>
+          <div class="card-sub">All sources</div>
+        </div>
+        <div class="card c-balance">
+          <div class="card-label">Planned balance</div>
+          <div class="card-value num" id="plan-balance">₹0</div>
+          <div class="card-sub" id="plan-balance-note">After expenses & savings</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>Income</h2>
+          <button class="add-btn" onclick="openPlanningModal('income')">+ Add</button>
+        </div>
+        <div id="plan-income-list"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>Fixed bills</h2>
+          <button class="add-btn" onclick="openPlanningModal('expense','fixed')">+ Add</button>
+        </div>
+        <div id="plan-fixed-list"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>Planned spending</h2>
+          <button class="add-btn" onclick="openPlanningModal('expense','variable')">+ Add</button>
+        </div>
+        <div id="plan-daily-list"></div>
       </div>
     </div>
 
@@ -824,6 +854,69 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
         <div class="section-head"><h3>Savings history (last 6 months)</h3></div>
         <div id="sav-history-list"></div>
       </div>
+
+      <div class="section" style="padding:18px 18px 4px; background:none; border:none; margin-bottom:8px;margin-top:8px;">
+        <h3 style="margin-bottom:4px;">Your accounts</h3>
+        <div style="font-size:12px;color:var(--text3);">Enter your real starting balance once — the app then keeps it updated using your income, expenses, and any carried-forward surplus.</div>
+      </div>
+      <div id="bank-list"></div>
+      <div class="connect-bank-card" onclick="openModal('bank')">
+        <div class="ic">🏦</div>
+        <div class="t">Add a bank account</div>
+        <div class="s">Enter your real starting balance</div>
+      </div>
+
+      <div class="section" style="padding:18px;margin-top:8px;">
+        <h2>Emergency fund calculator</h2>
+        <div style="font-size:13px;color:var(--text2);margin-top:5px;">Target: <span class="num" id="em-months-val">6</span> months of your expenses</div>
+
+        <div class="em-slider-row">
+          <div class="em-slider-label"><span>Months coverage</span><span class="num" id="em-months-display">6 months</span></div>
+          <input type="range" min="3" max="12" value="6" id="emMonthsSlider" oninput="updateEmergency()">
+        </div>
+        <div class="em-slider-row">
+          <div class="em-slider-label"><span>Current emergency savings</span><span class="num" id="em-current-display">₹0</span></div>
+          <input type="range" min="0" max="1000000" step="5000" value="0" id="emCurrentSlider" oninput="updateEmergency()">
+        </div>
+
+        <div class="emfund-grid">
+          <div class="emfund-metric">
+            <div class="em-label">Monthly expenses</div>
+            <div class="em-value num" id="em-monthly">₹0</div>
+            <div class="em-note">Auto from expenses</div>
+          </div>
+          <div class="emfund-metric">
+            <div class="em-label">Target fund</div>
+            <div class="em-value num" id="em-target" style="color:var(--sand)">₹0</div>
+            <div class="em-note" id="em-target-note">6× monthly</div>
+          </div>
+          <div class="emfund-metric">
+            <div class="em-label">Current saved</div>
+            <div class="em-value num" id="em-current-saved" style="color:var(--sky)">₹0</div>
+            <div class="em-note">From slider above</div>
+          </div>
+          <div class="emfund-metric">
+            <div class="em-label">Gap remaining</div>
+            <div class="em-value num" id="em-gap" style="color:var(--coral)">₹0</div>
+            <div class="em-note" id="em-months-to-fill">At current savings rate</div>
+          </div>
+        </div>
+
+        <div id="em-insight" class="insight-box insight-warn" style="margin-top:14px;"></div>
+
+        <div style="margin-top:16px;">
+          <h3 style="margin-bottom:12px;">Monthly contribution needed</h3>
+          <div class="em-slider-row">
+            <div class="em-slider-label"><span>Timeline to reach goal</span><span class="num" id="em-timeline-display">12 months</span></div>
+            <input type="range" min="3" max="36" value="12" id="emTimelineSlider" oninput="updateEmergency()">
+          </div>
+          <div style="background:var(--sky-bg);border-radius:var(--radius-sm);padding:15px 16px;margin-top:10px;">
+            <div style="font-size:11.5px;color:var(--sky-text);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Monthly saving needed</div>
+            <div style="font-size:27px;font-weight:700;color:var(--sky-text)" class="num" id="em-monthly-needed">₹0</div>
+            <div style="font-size:12px;color:var(--sky-text);margin-top:4px;" id="em-feasibility"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
 
@@ -881,61 +974,6 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
         <button class="tab txn-filter-pill" data-txn-filter="investment" onclick="setTxnFilter('investment')">Investments</button>
       </div>
       <div id="transaction-list"></div>
-    </div>
-
-    <!-- EMERGENCY FUND -->
-    <div class="tab-panel" id="tab-emergency">
-      <div class="section" style="padding:18px;">
-        <h2>Emergency fund calculator</h2>
-        <div style="font-size:13px;color:var(--text2);margin-top:5px;">Target: <span class="num" id="em-months-val">6</span> months of your expenses</div>
-
-        <div class="em-slider-row">
-          <div class="em-slider-label"><span>Months coverage</span><span class="num" id="em-months-display">6 months</span></div>
-          <input type="range" min="3" max="12" value="6" id="emMonthsSlider" oninput="updateEmergency()">
-        </div>
-        <div class="em-slider-row">
-          <div class="em-slider-label"><span>Current emergency savings</span><span class="num" id="em-current-display">₹0</span></div>
-          <input type="range" min="0" max="1000000" step="5000" value="0" id="emCurrentSlider" oninput="updateEmergency()">
-        </div>
-
-        <div class="emfund-grid">
-          <div class="emfund-metric">
-            <div class="em-label">Monthly expenses</div>
-            <div class="em-value num" id="em-monthly">₹0</div>
-            <div class="em-note">Auto from expenses</div>
-          </div>
-          <div class="emfund-metric">
-            <div class="em-label">Target fund</div>
-            <div class="em-value num" id="em-target" style="color:var(--sand)">₹0</div>
-            <div class="em-note" id="em-target-note">6× monthly</div>
-          </div>
-          <div class="emfund-metric">
-            <div class="em-label">Current saved</div>
-            <div class="em-value num" id="em-current-saved" style="color:var(--sky)">₹0</div>
-            <div class="em-note">From slider above</div>
-          </div>
-          <div class="emfund-metric">
-            <div class="em-label">Gap remaining</div>
-            <div class="em-value num" id="em-gap" style="color:var(--coral)">₹0</div>
-            <div class="em-note" id="em-months-to-fill">At current savings rate</div>
-          </div>
-        </div>
-
-        <div id="em-insight" class="insight-box insight-warn" style="margin-top:14px;"></div>
-
-        <div style="margin-top:16px;">
-          <h3 style="margin-bottom:12px;">Monthly contribution needed</h3>
-          <div class="em-slider-row">
-            <div class="em-slider-label"><span>Timeline to reach goal</span><span class="num" id="em-timeline-display">12 months</span></div>
-            <input type="range" min="3" max="36" value="12" id="emTimelineSlider" oninput="updateEmergency()">
-          </div>
-          <div style="background:var(--sky-bg);border-radius:var(--radius-sm);padding:15px 16px;margin-top:10px;">
-            <div style="font-size:11.5px;color:var(--sky-text);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Monthly saving needed</div>
-            <div style="font-size:27px;font-weight:700;color:var(--sky-text)" class="num" id="em-monthly-needed">₹0</div>
-            <div style="font-size:12px;color:var(--sky-text);margin-top:4px;" id="em-feasibility"></div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -1640,6 +1678,28 @@ function periodIsPast(y, m){
   return m < now.getMonth();
 }
 
+/* Scan every month this user has ever recorded data for and return the
+   earliest one. Used the very first time carry-forward ever runs for this
+   user, so it starts from the true beginning of their history instead of
+   just one month before wherever they happen to be looking right now —
+   otherwise, anyone who skips opening the app for a couple of months would
+   have those in-between months silently skipped over. */
+function findEarliestMonthWithData(hh){
+  let earliest = null;
+  Object.keys(hh.data).forEach(key => {
+    const match = key.match(/^y(-?\d+)m(\d+)$/);
+    if (!match) return;
+    const ky = parseInt(match[1], 10);
+    const km = parseInt(match[2], 10);
+    if (!earliest || ky < earliest.y || (ky === earliest.y && km < earliest.m)) {
+      earliest = { y: ky, m: km };
+    }
+  });
+  // if there's truly no recorded data anywhere yet, fall back to the old
+  // behavior of starting one month before whatever's currently being viewed
+  return earliest || prevPeriod(yearIndex, monthIndex);
+}
+
 /* Each completed calendar month's net (income - expenses - savings) is applied
    exactly once to the real, ongoing bank balance — like a bank statement closing
    out at month-end. We walk forward from the last-applied period to "today",
@@ -1655,7 +1715,7 @@ function applyCompletedMonthsToBalance(){
 
   let { y, m } = acc.lastAppliedPeriod
     ? nextPeriod(acc.lastAppliedPeriod.y, acc.lastAppliedPeriod.m)
-    : prevPeriod(yearIndex, monthIndex); // first run: start from the month before the one being viewed
+    : findEarliestMonthWithData(hh); // first run ever: start from the true beginning, not just one month back — otherwise months in between get silently skipped if the user hasn't opened the app every single month
 
   let appliedAny = false;
   let guard = 0;
@@ -1664,10 +1724,18 @@ function applyCompletedMonthsToBalance(){
     const key = periodKey(y, m);
     const monthData = hh.data[key] && hh.data[key][DB.session];
     if (monthData) {
-      const income = monthData.income.reduce((a,i)=>a+i.amount,0);
-      const expenses = allExpenses(monthData).filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0);
-      const savings = allExpenses(monthData).filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0);
-      const net = income - expenses - savings;
+      // For moving money into the bank balance, count only this month's OWN
+      // activity — not any "Carried forward" lines that a previous run of
+      // this same function already added. Those lines exist purely so the
+      // amount is visible in the Income/Savings tabs; their effect on the
+      // bank balance was already applied the moment they were created, one
+      // loop-iteration ago. Counting them again here would double-apply the
+      // same money every time this function runs forward past that month.
+      const ownIncome = monthData.income.filter(i => !i.carriedFromPeriod).reduce((a,i)=>a+i.amount,0);
+      const ownExpensesAndSavings = allExpenses(monthData).filter(e => !e.carriedFromPeriod);
+      const ownExpenses = ownExpensesAndSavings.filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0);
+      const ownSavings = ownExpensesAndSavings.filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0);
+      const net = ownIncome - ownExpenses - ownSavings;
       if (net !== 0 && acc.banks.length) {
         const totalStarting = acc.banks.reduce((a,b)=>a+(b.balance||0), 0);
         acc.banks.forEach(b => {
@@ -1676,6 +1744,30 @@ function applyCompletedMonthsToBalance(){
         });
       }
       acc.lastCarryForward = { amount: net, fromPeriod: { y, m } };
+
+      // Make last month's surplus visible inside NEXT month too, not just as
+      // an invisible bank-balance adjustment: add a real "Carried forward"
+      // income line, and — for a genuine surplus — a matching savings line,
+      // so it counts toward savings totals automatically. A shortfall (net
+      // < 0) only gets the income line, as a negative correction, since a
+      // deficit can't be "saved". This pair has zero net effect on the bank
+      // balance math above (income +X cancels savings +X), so it never
+      // double-counts what was just applied — it only makes it visible.
+      const nxt = nextPeriod(y, m);
+      const nextData = monthDataFor(hh, nxt.m, DB.session, nxt.y);
+      const alreadyCarried = nextData.income.find(i => i.carriedFromPeriod && i.carriedFromPeriod.y === y && i.carriedFromPeriod.m === m);
+      if (net !== 0 && !alreadyCarried) {
+        nextData.income.push({
+          id: nextData.nextIncId++, name: 'Carried forward from ' + MONTHS[m] + ' ' + y,
+          amount: net, paidBy: DB.session, type: 'rollover', carriedFromPeriod: { y, m }
+        });
+        if (net > 0) {
+          nextData.expensesFixed.push({
+            id: nextData.nextExpId++, name: 'Carried forward into savings', amount: net,
+            cat: 'savings', type: 'fixed', paidBy: DB.session, carriedFromPeriod: { y, m }
+          });
+        }
+      }
 
       // Loans I owe that are linked to a recurring EMI: each completed month
       // that the EMI was actually logged, reduce that loan's outstanding
@@ -1702,15 +1794,17 @@ function applyCompletedMonthsToBalance(){
   if (appliedAny) saveStore();
 }
 
-/* Correct the most recent carry-forward amount by hand. We apply only the
-   difference between the new and old amount to the bank balances (split the
-   same proportional way), so this never double-counts the part that was
-   already applied. */
+/* Correct the most recent carry-forward amount by hand. We apply the
+   difference between the new and old amount to: the bank balances (split
+   proportionally, same as before), the visible "Carried forward" income line
+   in the month that received it, and its matching savings line if one
+   exists — so all three stay consistent with each other. */
 async function editCarryForward(newAmount){
   const acc = myAccounts();
   if (!acc.lastCarryForward) return;
   const oldAmount = acc.lastCarryForward.amount || 0;
   const delta = newAmount - oldAmount;
+
   if (delta !== 0 && acc.banks.length) {
     const totalStarting = acc.banks.reduce((a,b)=>a+(b.balance||0), 0);
     acc.banks.forEach(b => {
@@ -1718,6 +1812,31 @@ async function editCarryForward(newAmount){
       b.balance = (b.balance||0) + delta * share;
     });
   }
+
+  // Find and update the visible income/savings lines this carry-forward created
+  const { y: fy, m: fm } = acc.lastCarryForward.fromPeriod;
+  const hh = currentHousehold();
+  const nxt = nextPeriod(fy, fm);
+  const destData = monthDataFor(hh, nxt.m, DB.session, nxt.y);
+  const incomeLine = destData.income.find(i => i.carriedFromPeriod && i.carriedFromPeriod.y === fy && i.carriedFromPeriod.m === fm);
+  if (incomeLine) incomeLine.amount = newAmount;
+  const savingsLine = destData.expensesFixed.find(e => e.carriedFromPeriod && e.carriedFromPeriod.y === fy && e.carriedFromPeriod.m === fm);
+  if (newAmount > 0) {
+    if (savingsLine) {
+      savingsLine.amount = newAmount;
+    } else if (!savingsLine) {
+      // the original carry-forward was a shortfall (no savings line existed) but
+      // it's now being corrected into a surplus — add the savings line fresh
+      destData.expensesFixed.push({
+        id: destData.nextExpId++, name: 'Carried forward into savings', amount: newAmount,
+        cat: 'savings', type: 'fixed', paidBy: DB.session, carriedFromPeriod: { y: fy, m: fm }
+      });
+    }
+  } else if (savingsLine) {
+    // corrected down to a shortfall (or zero) — a deficit can't be "savings"
+    destData.expensesFixed = destData.expensesFixed.filter(e => e !== savingsLine);
+  }
+
   acc.lastCarryForward.amount = newAmount;
   logTransaction(myData(), { kind: 'account', action: 'edited', name: 'Carried forward amount corrected', amount: newAmount });
   await saveStore();
@@ -2011,6 +2130,121 @@ function renderIncome(){
     `).join('');
   }
   document.getElementById('inc-total').textContent = fmt(totalIncome(d));
+}
+
+/* ============================================================
+   NEXT MONTH PLANNING — lets you add/edit next month's income
+   and expenses in advance, before that month starts. Recurring
+   items already show up here automatically (seeded the same way
+   as any other month); this tab is for adding one-off extras you
+   already know are coming, ahead of time.
+
+   To avoid duplicating the expense/income save & modal logic, we
+   reuse it as-is: point monthIndex/yearIndex at next month, open
+   the normal modal, and only switch back to the real month once
+   that modal actually closes (Save or Cancel) — not right after
+   opening it, since Save happens later, asynchronously, when the
+   user taps the button inside the still-open modal.
+   ============================================================ */
+function nextMonthPeriod(){
+  return nextPeriod(yearIndex, monthIndex);
+}
+
+let planningRealMonth = null; // {y, m} of the real month, while a planning modal is open
+
+function enterPlanningMonth(){
+  if (planningRealMonth) return; // already inside a planning modal — don't nest
+  planningRealMonth = { y: yearIndex, m: monthIndex };
+  const nxt = nextMonthPeriod();
+  yearIndex = nxt.y; monthIndex = nxt.m;
+}
+function exitPlanningMonth(){
+  if (!planningRealMonth) return;
+  yearIndex = planningRealMonth.y; monthIndex = planningRealMonth.m;
+  planningRealMonth = null;
+}
+
+function openPlanningModal(kind, defaultType, id){
+  enterPlanningMonth();
+  openModal(kind, id, defaultType);
+}
+function editPlanningItem(kind, id){
+  enterPlanningMonth();
+  openModal(kind, id);
+}
+async function deletePlanningItem(kind, id){
+  enterPlanningMonth();
+  try {
+    if (kind === 'expense') await deleteExpense(id);
+    else await deleteIncome(id);
+  } finally {
+    exitPlanningMonth();
+    renderPlanning();
+  }
+}
+
+function renderPlanning(){
+  const nxt = nextMonthPeriod();
+  const hh = currentHousehold();
+  const d = monthDataFor(hh, nxt.m, DB.session, nxt.y);
+
+  document.getElementById('plan-month-label').textContent = MONTHS[nxt.m] + ' ' + nxt.y;
+
+  const income = totalIncome(d);
+  const expenses = totalExpenses(d);
+  const savings = totalSavings(d);
+  const balance = income - expenses - savings;
+  document.getElementById('plan-income').textContent = fmt(income);
+  document.getElementById('plan-balance').textContent = fmt(balance);
+  document.getElementById('plan-balance-note').textContent = balance>=0 ? 'Planned surplus' : 'Planned shortfall ⚠️';
+
+  const incomeList = document.getElementById('plan-income-list');
+  incomeList.innerHTML = d.income.length ? d.income.map(i=>`
+    <div class="row">
+      <div class="row-icon" style="background:var(--mint-bg)">💼</div>
+      <div class="row-info">
+        <div class="row-name">${i.name}${i.recurringId ? ' <span title="Repeats every month" style="font-size:11px;">🔁</span>' : ''}</div>
+        ${i.type==='rollover' ? '<div style="margin-top:4px;"><span class="tag tag-rollover">Carried forward</span></div>' : ''}
+      </div>
+      <div class="row-amount income num">${fmt(i.amount)}</div>
+      <div class="row-actions">
+        <button class="icon-btn" onclick="editPlanningItem('income','${i.id}')">✏️</button>
+        <button class="icon-btn" onclick="deletePlanningItem('income','${i.id}')">🗑</button>
+      </div>
+    </div>
+  `).join('') : `<div class="empty-state"><div class="ic">💼</div><div class="t">Nothing planned yet — recurring income will show up here automatically.</div></div>`;
+
+  const fixedList = document.getElementById('plan-fixed-list');
+  fixedList.innerHTML = d.expensesFixed.length ? d.expensesFixed.map(e=>`
+    <div class="row">
+      <div class="row-icon">${ICONS[e.cat]||'💰'}</div>
+      <div class="row-info">
+        <div class="row-name">${e.name}${e.recurringId ? ' <span title="Repeats every month" style="font-size:11px;">🔁</span>' : ''}</div>
+        <span class="tag tag-${e.cat==='emi'?'emi':e.cat==='savings'?'saving':e.type}">${LABELS[e.cat]||e.cat}</span>
+      </div>
+      <div class="row-amount expense num">${fmt(e.amount)}</div>
+      <div class="row-actions">
+        <button class="icon-btn" onclick="editPlanningItem('expense','${e.id}')">✏️</button>
+        <button class="icon-btn" onclick="deletePlanningItem('expense','${e.id}')">🗑</button>
+      </div>
+    </div>
+  `).join('') : `<div class="empty-state"><div class="ic">🧾</div><div class="t">Nothing planned yet — recurring bills will show up here automatically.</div></div>`;
+
+  const dailyList = document.getElementById('plan-daily-list');
+  dailyList.innerHTML = d.expensesDaily.length ? d.expensesDaily.map(e=>`
+    <div class="row">
+      <div class="row-icon">${ICONS[e.cat]||'💰'}</div>
+      <div class="row-info">
+        <div class="row-name">${e.name}</div>
+        <span class="tag tag-${e.type}">${LABELS[e.cat]||e.cat}</span>
+      </div>
+      <div class="row-amount expense num">${fmt(e.amount)}</div>
+      <div class="row-actions">
+        <button class="icon-btn" onclick="editPlanningItem('expense','${e.id}')">✏️</button>
+        <button class="icon-btn" onclick="deletePlanningItem('expense','${e.id}')">🗑</button>
+      </div>
+    </div>
+  `).join('') : `<div class="empty-state"><div class="ic">🛍️</div><div class="t">Nothing planned yet — add anything extra you already know is coming.</div></div>`;
 }
 
 async function deleteExpense(id){
@@ -2333,6 +2567,12 @@ function renderSavings(){
       <div class="row-amount num" style="color:var(--text)">${fmt(r.saved)}</div>
     </div>
   `).join('');
+
+  // Accounts and the emergency fund calculator now live physically inside
+  // this same tab, so render them here too.
+  renderBank();
+  loadEmergencyInputs();
+  updateEmergency();
 }
 
 /* ============================================================
@@ -2710,13 +2950,12 @@ const TAB_RENDERERS = {
   overview: renderOverview,
   expenses: renderExpenses,
   income: renderIncome,
-  bank: renderBank,
+  planning: renderPlanning,
   investments: renderInvestments,
   loans: renderLoans,
   savings: renderSavings,
   family: renderFamily,
-  transactions: renderTransactions,
-  emergency: () => { loadEmergencyInputs(); updateEmergency(); }
+  transactions: renderTransactions
 };
 
 function activeTabName(){
@@ -2997,6 +3236,13 @@ function signOut(){
 function closeModal(id){
   const el = document.getElementById(id);
   if (el) el.remove();
+  // If this close happened while we were temporarily viewing "next month" for
+  // the planning tab, restore the real month now and refresh that tab so it
+  // reflects whatever was just saved/cancelled.
+  if (planningRealMonth) {
+    exitPlanningMonth();
+    renderPlanning();
+  }
 }
 function closeModalOnBg(e, id){
   closeModal(id);
