@@ -397,12 +397,12 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
         <input type="text" id="su-name" placeholder="e.g. Priya Sharma" autocomplete="name">
       </div>
       <div class="field">
-        <label>Create a PIN (4–6 digits)</label>
-        <input type="password" id="su-pin" placeholder="••••" inputmode="numeric" maxlength="6" autocomplete="new-password">
+        <label>Create a 6-digit PIN</label>
+        <input type="password" id="su-pin" placeholder="••••••" inputmode="numeric" maxlength="6" autocomplete="new-password">
       </div>
       <div class="field">
         <label>Confirm PIN</label>
-        <input type="password" id="su-pin2" placeholder="••••" inputmode="numeric" maxlength="6" autocomplete="new-password">
+        <input type="password" id="su-pin2" placeholder="••••••" inputmode="numeric" maxlength="6" autocomplete="new-password">
       </div>
 
       <button class="btn btn-primary btn-block" id="su-btn" onclick="signUp()">Create account</button>
@@ -410,8 +410,64 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
 
       <div class="mock-banner" style="margin-top:18px;">
         <span>🔒</span>
-        <span>Your PIN is hashed with SHA-256 before being stored in the cloud — we never store your raw PIN. Your name must be unique across all users worldwide.</span>
+        <span>Your PIN is salted and hashed before being stored — never saved in plain text, and never the same hash as anyone else's even with the same PIN. Your name must be unique across all users.</span>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ AUTH: RECOVERY CODE (shown once after signup) ============ -->
+<div class="screen" id="screen-recovery-code">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-title">Save your recovery code</div>
+      <div class="auth-sub">If you ever forget your PIN, this code is the only way back into your account. We can't show it to you again after this — write it down or save it somewhere safe right now.</div>
+
+      <div style="background:var(--bg-deep);border-radius:var(--radius-sm);padding:18px;text-align:center;margin:18px 0;">
+        <div style="font-family:'Lexend',monospace;font-size:24px;font-weight:700;letter-spacing:2px;color:var(--text);" id="recovery-code-display">XXXXX-XXXXX</div>
+      </div>
+
+      <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+        <input type="checkbox" id="recovery-ack" style="width:18px;height:18px;" onchange="document.getElementById('recovery-continue-btn').disabled = !this.checked;">
+        <label style="margin:0;font-size:13px;" for="recovery-ack">I've saved this code somewhere safe</label>
+      </div>
+
+      <button class="btn btn-primary btn-block" id="recovery-continue-btn" disabled onclick="goTo('household')">Continue</button>
+
+      <div class="mock-banner" style="margin-top:18px;">
+        <span>⚠️</span>
+        <span>This code will not be shown again. Anyone with your name and this code can reset your PIN, so keep it as private as the PIN itself.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ AUTH: FORGOT PIN ============ -->
+<div class="screen" id="screen-forgot-pin">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-title">Reset your PIN</div>
+      <div class="auth-sub">Enter your name and recovery code to set a new PIN.</div>
+
+      <div class="field">
+        <label>Your name</label>
+        <input type="text" id="fp-name" placeholder="e.g. Priya Sharma" autocomplete="name">
+      </div>
+      <div class="field">
+        <label>Recovery code</label>
+        <input type="text" id="fp-code" placeholder="XXXXX-XXXXX" autocapitalize="characters" style="text-transform:uppercase;">
+      </div>
+      <div class="field">
+        <label>New 6-digit PIN</label>
+        <input type="password" id="fp-pin" placeholder="••••••" inputmode="numeric" maxlength="6" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label>Confirm new PIN</label>
+        <input type="password" id="fp-pin2" placeholder="••••••" inputmode="numeric" maxlength="6" autocomplete="new-password">
+      </div>
+
+      <button class="btn btn-primary btn-block" id="fp-btn" onclick="resetPinWithRecoveryCode()">Reset PIN</button>
+      <div class="auth-foot">Remembered it after all? <a onclick="goTo('signin')">Sign in</a></div>
     </div>
   </div>
 </div>
@@ -434,6 +490,7 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
 
       <button class="btn btn-primary btn-block" id="si-btn" onclick="signIn()">Sign in</button>
       <div class="auth-foot">New here? <a onclick="goTo('signup')">Create an account</a></div>
+      <div class="auth-foot" style="margin-top:6px;"><a onclick="goTo('forgot-pin')">Forgot your PIN?</a></div>
     </div>
   </div>
 </div>
@@ -578,9 +635,10 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
           <div class="card-sub" id="ov-savings-pct">0% of income</div>
         </div>
         <div class="card c-balance">
-          <div class="card-label">Balance</div>
+          <div class="card-label">This month's surplus</div>
           <div class="card-value num" id="ov-balance">₹0</div>
-          <div class="card-sub" id="ov-balance-note">After expenses</div>
+          <div class="card-sub" id="ov-balance-note">Income minus expenses & savings</div>
+          <div class="card-sub num" id="ov-real-balance" style="margin-top:4px;display:none;"></div>
         </div>
       </div>
 
@@ -687,7 +745,7 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
     <div class="tab-panel" id="tab-loans">
       <div class="section" style="padding:18px 18px 4px; background:none; border:none; margin-bottom:8px;">
         <h3 style="margin-bottom:4px;">Loans</h3>
-        <div style="font-size:12px;color:var(--text3);">Track what you owe and what's owed to you. Link a loan to a recurring EMI bill and its balance reduces automatically each month you pay it.</div>
+        <div style="font-size:12px;color:var(--text3);">Track what you owe and what's owed to you. Link a loan to any recurring bill and its balance reduces automatically each month you pay it.</div>
       </div>
       <div class="summary-grid" style="grid-template-columns:1fr 1fr;">
         <div class="card c-balance">
@@ -733,6 +791,16 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
           <div class="card-label">Net worth saved</div>
           <div class="card-value num" id="sav-total">₹0</div>
           <div class="card-sub">Bank + investments</div>
+        </div>
+        <div class="card c-save">
+          <div class="card-label">Saved this year</div>
+          <div class="card-value num" id="sav-ytd">₹0</div>
+          <div class="card-sub" id="sav-ytd-sub">Jan – now</div>
+        </div>
+        <div class="card c-balance">
+          <div class="card-label">Saved all-time</div>
+          <div class="card-value num" id="sav-lifetime">₹0</div>
+          <div class="card-sub" id="sav-lifetime-sub">Since you started</div>
         </div>
       </div>
 
@@ -1011,6 +1079,7 @@ function goTo(screenName){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const map = {
     welcome: 'screen-welcome', signup: 'screen-signup', signin: 'screen-signin',
+    'recovery-code': 'screen-recovery-code', 'forgot-pin': 'screen-forgot-pin',
     household: 'screen-household',
     'create-household': 'screen-create-household', 'join-household': 'screen-join-household',
     app: 'screen-app'
@@ -1019,10 +1088,46 @@ function goTo(screenName){
   if (screenName === 'signin') populateSignInProfiles();
 }
 
-async function hashPin(pin){
-  const enc = new TextEncoder().encode('hearth-salt::' + pin);
-  const buf = await crypto.subtle.digest('SHA-256', enc);
+/* Per-user random salt, not a single app-wide fixed salt. A shared salt means
+   two people with the same PIN get an identical hash, and anyone who ever saw
+   the hashes could precompute every 6-digit PIN once and crack every account
+   instantly. A random salt per user defeats that — each hash has to be
+   attacked individually. We also run the hash through several thousand
+   rounds (PBKDF2-style stretching using repeated SHA-256) to make brute-force
+   guessing meaningfully slower, while still finishing fast enough in-browser. */
+async function sha256Hex(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+function randomSalt(){
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function hashPinWithSalt(pin, salt){
+  let h = salt + '::' + pin;
+  for (let i = 0; i < 2000; i++) h = await sha256Hex(h);
+  return h;
+}
+/* Legacy support: accounts created before this change have a hash made the
+   old way (one fixed salt, no stretching). We can detect and verify those
+   without forcing everyone to reset, and upgrade them to a real per-user
+   salt transparently the next time they sign in successfully. */
+async function legacyHashPin(pin){
+  return sha256Hex('hearth-salt::' + pin);
+}
+
+/* A one-time recovery code, shown to the user once at signup, that can reset
+   their PIN later if forgotten. We store only its hash — never the plain
+   code — exactly like the PIN itself, so a database leak doesn't expose it. */
+function generateRecoveryCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no easily-confused chars (0/O, 1/I, etc.)
+  const bytes = crypto.getRandomValues(new Uint8Array(10));
+  let code = '';
+  for (let i = 0; i < 10; i++) {
+    code += chars[bytes[i] % chars.length];
+    if (i === 4) code += '-';
+  }
+  return code; // e.g. "X7K2P-9QR4M"
 }
 
 async function populateSignInProfiles(){
@@ -1036,6 +1141,11 @@ async function populateSignInProfiles(){
   sel.innerHTML = data.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
 }
 
+const WEAK_PINS = new Set([
+  '000000','111111','222222','333333','444444','555555','666666','777777','888888','999999',
+  '123456','654321','123123','121212','112233','102030','010203','456789','987654'
+]);
+
 async function signUp(){
   const name = document.getElementById('su-name').value.trim();
   const pin = document.getElementById('su-pin').value.trim();
@@ -1043,7 +1153,9 @@ async function signUp(){
 
   if (!name) return showToast('Enter your name');
   if (name.length < 2) return showToast('Name must be at least 2 characters');
-  if (!/^\d{4,6}$/.test(pin)) return showToast('PIN must be 4–6 digits');
+  if (!/^\d{6}$/.test(pin)) return showToast('PIN must be exactly 6 digits');
+  if (WEAK_PINS.has(pin)) return showToast('That PIN is too easy to guess — pick something less predictable');
+  if (/^(\d)\1{5}$/.test(pin)) return showToast('Avoid repeating the same digit six times');
   if (pin !== pin2) return showToast("PINs don't match");
 
   // Disable button to prevent double-submit
@@ -1062,13 +1174,22 @@ async function signUp(){
       return;
     }
 
-    showToast('Creating account…');
-    const pinHash = await hashPin(pin);
+    showToast('Securing your account…');
+    const pinSalt = randomSalt();
+    const pinHash = await hashPinWithSalt(pin, pinSalt);
+    const recoveryCode = generateRecoveryCode();
+    const recoverySalt = randomSalt();
+    const recoveryHash = await hashPinWithSalt(recoveryCode, recoverySalt);
     const newId = uid();
     const { error } = await supa.from('users').insert({
       id: newId,
       name: name,  // store original casing
       pin_hash: pinHash,
+      pin_salt: pinSalt,
+      recovery_hash: recoveryHash,
+      recovery_salt: recoverySalt,
+      failed_attempts: 0,
+      locked_until: null,
       color: 'mint',
       household_id: null
     });
@@ -1082,12 +1203,18 @@ async function signUp(){
     document.getElementById('su-pin').value = '';
     document.getElementById('su-pin2').value = '';
 
-    goTo('household');
+    document.getElementById('recovery-code-display').textContent = recoveryCode;
+    document.getElementById('recovery-ack').checked = false;
+    document.getElementById('recovery-continue-btn').disabled = true;
+    goTo('recovery-code');
   } catch(e) {
     showToast('Error: ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = 'Create account'; }
   }
 }
+
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
 
 async function signIn(){
   const userId = document.getElementById('si-user-select').value;
@@ -1103,16 +1230,56 @@ async function signIn(){
     const { data: user, error } = await supa.from('users').select('*').eq('id', userId).single();
     if (error || !user) throw new Error('Account not found. Please create an account.');
 
-    const pinHash = await hashPin(pin);
-    if (pinHash !== user.pin_hash) {
-      showToast('Incorrect PIN — try again');
+    // Lockout check: too many wrong PINs in a row temporarily blocks sign-in,
+    // so a stolen/guessed PIN attempt can't just be retried indefinitely.
+    if (user.locked_until && new Date(user.locked_until) > new Date()) {
+      const minsLeft = Math.ceil((new Date(user.locked_until) - new Date()) / 60000);
+      showToast(`Too many incorrect attempts. Try again in ${minsLeft} minute${minsLeft===1?'':'s'}, or use "Forgot your PIN?"`);
+      if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
+      return;
+    }
+
+    // Verify against the modern salted+stretched hash if this account has one;
+    // otherwise fall back to checking the old fixed-salt hash so existing
+    // accounts created before this change still work.
+    let correct = false;
+    let needsUpgrade = false;
+    if (user.pin_salt && user.pin_hash) {
+      correct = (await hashPinWithSalt(pin, user.pin_salt)) === user.pin_hash;
+    } else if (user.pin_hash) {
+      correct = (await legacyHashPin(pin)) === user.pin_hash;
+      needsUpgrade = correct; // only upgrade once we know the PIN is actually right
+    }
+
+    if (!correct) {
+      const attempts = (user.failed_attempts || 0) + 1;
+      const update = { failed_attempts: attempts };
+      if (attempts >= MAX_FAILED_ATTEMPTS) {
+        update.locked_until = new Date(Date.now() + LOCKOUT_MINUTES * 60000).toISOString();
+        update.failed_attempts = 0;
+        showToast(`Too many incorrect attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`);
+      } else {
+        showToast(`Incorrect PIN — ${MAX_FAILED_ATTEMPTS - attempts} attempt${MAX_FAILED_ATTEMPTS-attempts===1?'':'s'} left before a temporary lockout`);
+      }
+      await supa.from('users').update(update).eq('id', userId);
       if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
       document.getElementById('si-pin').value = '';
       document.getElementById('si-pin').focus();
       return;
     }
 
-    DB.users[user.id] = { id: user.id, name: user.name, pinHash: user.pin_hash, color: user.color, householdId: user.household_id };
+    // Correct PIN: reset any failed-attempt counter, and silently upgrade a
+    // legacy fixed-salt hash to a modern per-user-salted one so accounts get
+    // stronger over time without ever forcing a manual reset.
+    const successUpdate = { failed_attempts: 0, locked_until: null };
+    if (needsUpgrade) {
+      const newSalt = randomSalt();
+      successUpdate.pin_hash = await hashPinWithSalt(pin, newSalt);
+      successUpdate.pin_salt = newSalt;
+    }
+    await supa.from('users').update(successUpdate).eq('id', userId);
+
+    DB.users[user.id] = { id: user.id, name: user.name, pinHash: successUpdate.pin_hash || user.pin_hash, color: user.color, householdId: user.household_id };
     DB.session = user.id;
     saveSession(user.id);
     document.getElementById('si-pin').value = '';
@@ -1127,6 +1294,60 @@ async function signIn(){
   } catch(e) {
     showToast(e.message || 'Sign in failed');
     if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
+  }
+}
+
+/* Reset a forgotten PIN using the one-time recovery code shown at signup. */
+async function resetPinWithRecoveryCode(){
+  const name = document.getElementById('fp-name').value.trim();
+  const code = document.getElementById('fp-code').value.trim().toUpperCase();
+  const newPin = document.getElementById('fp-pin').value.trim();
+  const newPin2 = document.getElementById('fp-pin2').value.trim();
+
+  if (!name) return showToast('Enter your name');
+  if (!code) return showToast('Enter your recovery code');
+  if (!/^\d{6}$/.test(newPin)) return showToast('New PIN must be exactly 6 digits');
+  if (WEAK_PINS.has(newPin)) return showToast('That PIN is too easy to guess — pick something less predictable');
+  if (newPin !== newPin2) return showToast("PINs don't match");
+
+  const btn = document.getElementById('fp-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Verifying…'; }
+
+  try {
+    const { data: matches, error } = await supa.from('users').select('*').ilike('name', name);
+    if (error) throw new Error(error.message);
+    const user = (matches || []).find(u => u.name.toLowerCase() === name.toLowerCase());
+    if (!user || !user.recovery_hash || !user.recovery_salt) {
+      showToast('No matching account or recovery code found for that name');
+      if (btn) { btn.disabled = false; btn.textContent = 'Reset PIN'; }
+      return;
+    }
+
+    const codeHash = await hashPinWithSalt(code, user.recovery_salt);
+    if (codeHash !== user.recovery_hash) {
+      showToast('That recovery code is incorrect');
+      if (btn) { btn.disabled = false; btn.textContent = 'Reset PIN'; }
+      return;
+    }
+
+    // Recovery code is correct: set the new PIN and clear any lockout.
+    const newSalt = randomSalt();
+    const newHash = await hashPinWithSalt(newPin, newSalt);
+    const { error: updateErr } = await supa.from('users').update({
+      pin_hash: newHash, pin_salt: newSalt, failed_attempts: 0, locked_until: null
+    }).eq('id', user.id);
+    if (updateErr) throw new Error(updateErr.message);
+
+    showToast('PIN reset ✓ — please sign in with your new PIN');
+    document.getElementById('fp-name').value = '';
+    document.getElementById('fp-code').value = '';
+    document.getElementById('fp-pin').value = '';
+    document.getElementById('fp-pin2').value = '';
+    goTo('signin');
+  } catch(e) {
+    showToast(e.message || 'Reset failed');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Reset PIN'; }
   }
 }
 
@@ -1595,6 +1816,11 @@ function totalDaily(d){ return d.expensesDaily.reduce((a,e)=>a+e.amount,0); }
    RENDER: OVERVIEW
    ============================================================ */
 function renderOverview(){
+  // Apply any newly-completed months' carry-forward to bank balances FIRST,
+  // so the "actual bank balance" figure shown below is always current —
+  // otherwise it could lag a render behind.
+  applyCompletedMonthsToBalance();
+
   const d = myData();
   const income = totalIncome(d);
   const expenses = totalExpenses(d);
@@ -1609,7 +1835,21 @@ function renderOverview(){
   document.getElementById('ov-savings').textContent = fmt(savings);
   document.getElementById('ov-savings-pct').textContent = savingsPct+'% of income';
   document.getElementById('ov-balance').textContent = fmt(balance);
-  document.getElementById('ov-balance-note').textContent = balance>=0 ? 'Surplus 🎉' : 'Deficit ⚠️';
+  document.getElementById('ov-balance-note').textContent = balance>=0 ? 'Surplus this month 🎉' : 'Deficit this month ⚠️';
+
+  // This card shows THIS MONTH's cash flow only. Your actual bank balance
+  // (shown on the Accounts/Savings tabs) also includes everything carried
+  // forward from previous months, so it's normal for the two numbers to
+  // differ — this line makes that explicit instead of leaving it to guess.
+  const realBalanceEl = document.getElementById('ov-real-balance');
+  const acc = myAccounts();
+  if (acc.banks.length) {
+    const realBalance = totalBankBalance(d);
+    realBalanceEl.textContent = 'Actual bank balance: ' + fmt(realBalance);
+    realBalanceEl.style.display = '';
+  } else {
+    realBalanceEl.style.display = 'none';
+  }
 
   const fill = document.getElementById('ov-progress-fill');
   fill.style.width = Math.min(pct,100)+'%';
@@ -1627,7 +1867,7 @@ function renderOverview(){
     insight.textContent = `💡 Saving ${savingsPct}% of income. Experts suggest at least 20%. Try increasing savings by ${fmt(Math.max(0,income*0.2-savings))}/month.`;
   } else {
     insight.className='insight-box insight-ok';
-    insight.textContent = `✅ Nice — you're saving ${savingsPct}% of income (${fmt(savings)}/mo). Balance after everything: ${fmt(balance)}.`;
+    insight.textContent = `✅ Nice — you're saving ${savingsPct}% of income (${fmt(savings)}/mo). This month's surplus: ${fmt(balance)}.`;
   }
 
   const byCategory = {};
@@ -1655,7 +1895,6 @@ function renderOverview(){
     }).join('');
   }
 
-  applyCompletedMonthsToBalance();
   renderLastMonthBanner();
 }
 
@@ -1884,7 +2123,7 @@ function loanRowHtml(l){
       <div class="row-info">
         <div class="row-name">${l.name}</div>
         <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;">
-          ${linkedTpl ? `<span class="tag" title="Auto-reduces with this EMI">🔁 ${linkedTpl.name}</span>` : ''}
+          ${linkedTpl ? `<span class="tag" title="Auto-reduces with this bill">🔁 ${linkedTpl.name}</span>` : ''}
           ${l.principal ? `<span style="font-size:11.5px;color:var(--text3)" class="num">of ${fmt(l.principal)}</span>` : ''}
         </div>
       </div>
@@ -1965,6 +2204,32 @@ function renderSavings(){
 
   const netWorth = totalNetWorth(d);
   document.getElementById('sav-total').textContent = fmt(netWorth);
+
+  // Lifetime and year-to-date savings: walk every month this user has ever
+  // recorded data for for (any household data key matching y<year>m<month>),
+  // and sum up that month's savings-category total. This is independent of
+  // bank balance/carry-forward — it's simply "how much have I logged as
+  // savings, month by month, all the way back."
+  let lifetimeSaved = 0;
+  let ytdSaved = 0;
+  let earliestPeriod = null;
+  Object.keys(hh.data).forEach(key => {
+    const match = key.match(/^y(-?\d+)m(\d+)$/);
+    if (!match) return; // skip any non-period keys (shouldn't exist, but be safe)
+    const ky = parseInt(match[1], 10);
+    const km = parseInt(match[2], 10);
+    const monthData = hh.data[key][DB.session];
+    if (!monthData) return;
+    const saved = totalSavings(monthData);
+    lifetimeSaved += saved;
+    if (ky === yearIndex) ytdSaved += saved;
+    if (!earliestPeriod || ky < earliestPeriod.y || (ky === earliestPeriod.y && km < earliestPeriod.m)) {
+      earliestPeriod = { y: ky, m: km };
+    }
+  });
+  document.getElementById('sav-ytd').textContent = fmt(ytdSaved);
+  document.getElementById('sav-lifetime').textContent = fmt(lifetimeSaved);
+  document.getElementById('sav-lifetime-sub').textContent = earliestPeriod ? `Since ${MONTHS[earliestPeriod.m]} ${earliestPeriod.y}` : 'Since you started';
 
   renderGoals(acc, netWorth);
 
@@ -2530,7 +2795,11 @@ function openModal(kind, id, defaultType){
     const acc = myAccounts();
     const editing = id ? acc.loans.find(l=>String(l.id)===String(id)) : null;
     const direction = editing ? editing.direction : (defaultType || 'owe');
-    const emiTemplates = myRecurring().templates.filter(t => t.cat === 'emi');
+    // Show every recurring bill the user has set up, not just ones tagged
+    // specifically as "EMI" — a loan payment might have been logged under
+    // any category, and restricting the list made it easy to end up with
+    // nothing to link to.
+    const emiTemplates = myRecurring().templates;
     html = `
       <div class="modal-overlay open" id="modal-loan" onclick="closeModalOnBg(event,'modal-loan')">
         <div class="modal" onclick="event.stopPropagation()">
@@ -2545,12 +2814,19 @@ function openModal(kind, id, defaultType){
           <div class="form-group"><label>Original amount (optional)</label><input type="number" id="inp-loan-principal" placeholder="0" value="${editing ? (editing.principal||'') : ''}"></div>
           <div class="form-group"><label>Outstanding balance now</label><input type="number" id="inp-loan-balance" placeholder="0" value="${editing ? (editing.balance||'') : ''}"></div>
           <div class="form-group" id="loan-link-group" style="display:${direction==='owe'?'':'none'};">
-            <label>Link to a recurring EMI (optional)</label>
-            <select id="inp-loan-link">
-              <option value="">Don't link — I'll update this by hand</option>
-              ${emiTemplates.map(t=>`<option value="${t.id}" ${editing && editing.linkedExpenseId===t.id ? 'selected':''}>${t.name} (${fmt(t.amount)}/month)</option>`).join('')}
-            </select>
-            <div style="font-size:11.5px;color:var(--text3);margin-top:6px;">If linked, this loan's balance automatically goes down by the EMI amount each month you pay it — no manual updating needed.</div>
+            <label>Link to a recurring bill (optional)</label>
+            ${emiTemplates.length ? `
+              <select id="inp-loan-link">
+                <option value="">Don't link — I'll update this by hand</option>
+                ${emiTemplates.map(t=>`<option value="${t.id}" ${editing && editing.linkedExpenseId===t.id ? 'selected':''}>${t.name} (${fmt(t.amount)}/month)</option>`).join('')}
+              </select>
+              <div style="font-size:11.5px;color:var(--text3);margin-top:6px;">If linked, this loan's balance automatically goes down by that bill's amount each month you pay it — no manual updating needed.</div>
+            ` : `
+              <select id="inp-loan-link" disabled>
+                <option value="">No recurring bills set up yet</option>
+              </select>
+              <div style="font-size:11.5px;color:var(--text3);margin-top:6px;">To link a loan, first add its payment as a fixed expense on the Expenses tab with "Repeat every month" checked — then come back here and link it.</div>
+            `}
           </div>
           <div class="modal-btns">
             <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-loan')">Cancel</button>
