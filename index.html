@@ -1006,11 +1006,12 @@ async function saveStore(){
   if (!DB.session) return;
   const hh = currentHousehold();
   if (!hh) return;
-  // hh.accounts (banks/investments/savings goal/carry-forward) and hh.recurring
-  // (recurring bill templates) are folded into the same JSON blob as hh.data
-  // under reserved keys, since there's no separate database column for either —
-  // without this they were never being saved at all.
-  const payload = { ...hh.data, __accounts__: hh.accounts || {}, __recurring__: hh.recurring || {} };
+  // hh.accounts (banks/investments/savings goal/carry-forward), hh.recurring
+  // (recurring bill templates), and hh.recurringIncome (recurring income
+  // templates) are all folded into the same JSON blob as hh.data under
+  // reserved keys, since there's no separate database column for any of
+  // them — without this they were never being saved at all.
+  const payload = { ...hh.data, __accounts__: hh.accounts || {}, __recurring__: hh.recurring || {}, __recurringIncome__: hh.recurringIncome || {} };
   const { error: hhError } = await supa.from('households').upsert({
     id: hh.id,
     invite_code: hh.inviteCode,
@@ -1048,9 +1049,11 @@ async function refreshFromCloud(){
     const raw = data.data || {};
     const accounts = raw.__accounts__ || {};
     const recurring = raw.__recurring__ || {};
+    const recurringIncome = raw.__recurringIncome__ || {};
     const monthData = { ...raw };
     delete monthData.__accounts__;
     delete monthData.__recurring__;
+    delete monthData.__recurringIncome__;
     DB.households[data.id] = {
       id: data.id,
       name: data.name,
@@ -1058,7 +1061,8 @@ async function refreshFromCloud(){
       memberIds: data.member_ids,
       data: monthData,
       accounts: accounts,
-      recurring: recurring
+      recurring: recurring,
+      recurringIncome: recurringIncome
     };
     // also pull all household members' profiles
     const { data: members } = await supa.from('users').select('*').in('id', data.member_ids);
@@ -1506,6 +1510,35 @@ function seedRecurringBillsIntoMonth(data, hh, userId, y, m){
   });
 }
 
+/* Same idea as recurring fixed bills, but for income — salary, rent received,
+   pension, etc. Without this, income only ever existed in the single month it
+   was typed into, even though most income is just as monthly-recurring as
+   fixed bills are. */
+function recurringIncomeFor(hh, userId){
+  if (!hh.recurringIncome) hh.recurringIncome = {};
+  if (!hh.recurringIncome[userId]) hh.recurringIncome[userId] = { templates: [], nextId: 1 };
+  const r = hh.recurringIncome[userId];
+  if (!r.templates) r.templates = [];
+  if (!r.nextId) r.nextId = 1;
+  return r;
+}
+function myIncomeRecurring(){
+  return recurringIncomeFor(currentHousehold(), DB.session);
+}
+function seedRecurringIncomeIntoMonth(data, hh, userId, y, m){
+  const r = recurringIncomeFor(hh, userId);
+  if (!data.skippedIncomeRecurringIds) data.skippedIncomeRecurringIds = [];
+  r.templates.forEach(tpl => {
+    if (!templateAppliesTo(tpl, y, m)) return;
+    if (data.skippedIncomeRecurringIds.includes(tpl.id)) return;
+    const already = data.income.find(i => i.recurringId === tpl.id);
+    if (already) return;
+    data.income.push({
+      id: data.nextIncId++, name: tpl.name, amount: tpl.amount, paidBy: tpl.paidBy, recurringId: tpl.id
+    });
+  });
+}
+
 function monthDataFor(hh, mIdx, userId, yIdx){
   const y = (yIdx === undefined) ? yearIndex : yIdx;
   const mKey = periodKey(y, mIdx);
@@ -1538,6 +1571,7 @@ function monthDataFor(hh, mIdx, userId, yIdx){
   if (!data.expensesDaily) data.expensesDaily = [];
   if (!data.transactions) data.transactions = [];
   seedRecurringBillsIntoMonth(data, hh, userId, y, mIdx);
+  seedRecurringIncomeIntoMonth(data, hh, userId, y, mIdx);
 
   // one-time migration: pull any banks/investments/savingsGoal that used to live
   // on this specific month over into the new persistent accounts store
@@ -1909,6 +1943,10 @@ function memberChip(userId){
 
 function expenseRowHtml(e){
   const payerName = e.paidBy && DB.users[e.paidBy] ? DB.users[e.paidBy].name.split(' ')[0] : '';
+  // If this expense repeats and that recurring template is linked to a loan,
+  // show the loan right here too — so the connection is visible from either
+  // side, not just from the Loans tab.
+  const linkedLoan = e.recurringId ? myAccounts().loans.find(l => l.linkedExpenseId === e.recurringId) : null;
   return `
       <div class="row">
         <div class="row-icon">${ICONS[e.cat]||'💰'}</div>
@@ -1919,6 +1957,7 @@ function expenseRowHtml(e){
             ${e.shared ? '<span class="tag" style="background:var(--lav-bg);color:var(--lav-text);">Shared</span>' : ''}
             ${payerName ? `<span style="font-size:11px;color:var(--text3);">Paid by ${payerName}</span>` : ''}
           </div>
+          ${linkedLoan ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;">↪️ Pays down <b>${linkedLoan.name}</b> · ${fmt(linkedLoan.balance||0)} left</div>` : ''}
         </div>
         <div class="row-amount expense num">${fmt(e.amount)}</div>
         <div class="row-actions">
@@ -1960,7 +1999,7 @@ function renderIncome(){
       <div class="row">
         <div class="row-icon" style="background:var(--mint-bg)">💼</div>
         <div class="row-info">
-          <div class="row-name">${i.name}</div>
+          <div class="row-name">${i.name}${i.recurringId ? ' <span title="Repeats every month" style="font-size:11px;">🔁</span>' : ''}</div>
           ${i.type==='rollover' ? '<div style="margin-top:4px;"><span class="tag tag-rollover">Carried forward</span></div>' : ''}
         </div>
         <div class="row-amount income num">${fmt(i.amount)}</div>
@@ -2004,8 +2043,26 @@ async function deleteExpense(id){
 async function deleteIncome(id){
   const d = myData();
   const existing = d.income.find(i=>String(i.id)===String(id));
+  if (!existing) return;
+
+  if (existing.recurringId) {
+    const stopForever = await confirmDialog(
+      'This is repeating income',
+      'Do you want to remove it from just this month, or stop it from repeating in future months too?',
+      'Just this month', 'Stop repeating'
+    );
+    if (stopForever) {
+      const r = myIncomeRecurring();
+      const tpl = r.templates.find(t=>t.id===existing.recurringId);
+      if (tpl) tpl.endPeriod = prevPeriod(yearIndex, monthIndex); // ends before this month
+    } else {
+      if (!d.skippedIncomeRecurringIds) d.skippedIncomeRecurringIds = [];
+      d.skippedIncomeRecurringIds.push(existing.recurringId);
+    }
+  }
+
   d.income = d.income.filter(i=>String(i.id)!==String(id));
-  if (existing) logTransaction(d, { kind: 'income', action: 'deleted', name: existing.name, amount: existing.amount });
+  logTransaction(d, { kind: 'income', action: 'deleted', name: existing.name, amount: existing.amount });
   await saveStore(); renderAll();
   showToast('Income removed');
 }
@@ -2740,12 +2797,28 @@ function openModal(kind, id, defaultType){
   } else if (kind === 'income') {
     const d = myData();
     const editing = id ? d.income.find(i=>String(i.id)===String(id)) : null;
+    const tpl = editing && editing.recurringId ? myIncomeRecurring().templates.find(t=>t.id===editing.recurringId) : null;
+    const isRecurring = !!tpl;
+    const hasEnd = tpl && tpl.endPeriod;
     html = `
       <div class="modal-overlay open" id="modal-income" onclick="closeModalOnBg(event,'modal-income')">
         <div class="modal" onclick="event.stopPropagation()">
           <h2>${editing ? 'Edit income' : 'Add income'}</h2>
           <div class="form-group"><label>Source</label><input type="text" id="inc-name" placeholder="e.g. Salary" value="${editing?editing.name:''}"></div>
           <div class="form-group"><label>Amount (₹)</label><input type="number" id="inc-amount" placeholder="0" value="${editing?editing.amount:''}"></div>
+          <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="inc-recurring" style="width:18px;height:18px;" ${(!editing || isRecurring) ? 'checked' : ''} onchange="document.getElementById('inc-recurring-end-wrap').style.display=this.checked?'':'none'">
+            <label style="margin:0;" for="inc-recurring">Repeat every month</label>
+          </div>
+          <div id="inc-recurring-end-wrap" class="form-group" style="display:${(!editing||isRecurring)?'':'none'};">
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="inc-has-end" style="width:18px;height:18px;" ${hasEnd?'checked':''} onchange="document.getElementById('inc-end-month-wrap').style.display=this.checked?'':'none'">
+              Stop repeating after a certain month
+            </label>
+            <div id="inc-end-month-wrap" style="display:${hasEnd?'':'none'};margin-top:8px;">
+              <input type="month" id="inc-end-month" value="${hasEnd ? (tpl.endPeriod.y+'-'+String(tpl.endPeriod.m+1).padStart(2,'0')) : ''}">
+            </div>
+          </div>
           <div class="modal-btns">
             <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-income')">Cancel</button>
             <button class="btn btn-primary" style="flex:1" onclick="saveIncome('${editing?editing.id:''}')">Save</button>
@@ -2965,6 +3038,12 @@ function parseEndMonthInput(){
   const [y, m] = v.split('-').map(Number);
   return { y, m: m-1 };
 }
+function parseIncomeEndMonthInput(){
+  const v = document.getElementById('inc-has-end').checked ? document.getElementById('inc-end-month').value : '';
+  if (!v) return null;
+  const [y, m] = v.split('-').map(Number);
+  return { y, m: m-1 };
+}
 
 async function saveExpense(editId){
   const name = document.getElementById('exp-name').value.trim();
@@ -3032,14 +3111,46 @@ async function saveExpense(editId){
 async function saveIncome(editId){
   const name = document.getElementById('inc-name').value.trim();
   const amount = parseFloat(document.getElementById('inc-amount').value);
+  const wantsRecurring = document.getElementById('inc-recurring').checked;
+  const endPeriod = parseIncomeEndMonthInput();
   if (!name || isNaN(amount)) return showToast('Fill in source and amount');
   const d = myData();
+  const r = myIncomeRecurring();
+
   if (editId) {
-    const i = d.income.find(x=>String(x.id)===String(editId));
-    Object.assign(i, { name, amount });
+    const existing = d.income.find(x=>String(x.id)===String(editId));
+    const oldRecurringId = existing.recurringId;
+
+    // If this income repeats and there's more than just this month affected,
+    // ask whether the change should apply going forward too — same pattern
+    // as recurring fixed bills.
+    let applyForward = false;
+    if (oldRecurringId) {
+      applyForward = await confirmDialog('Apply this change to future months too?', 'This income repeats. You can update just this month, or this and every month after it.', 'Just this month', 'This & future months');
+    }
+
+    Object.assign(existing, { name, amount });
+
+    if (oldRecurringId && applyForward) {
+      const tpl = r.templates.find(t=>t.id===oldRecurringId);
+      if (tpl) { tpl.name=name; tpl.amount=amount; tpl.endPeriod = endPeriod; }
+      existing.recurringId = oldRecurringId;
+    } else if (oldRecurringId && !applyForward) {
+      delete existing.recurringId;
+    } else if (!oldRecurringId && wantsRecurring) {
+      const tpl = { id: r.nextId++, name, amount, paidBy: DB.session, startPeriod: { y: yearIndex, m: monthIndex }, endPeriod };
+      r.templates.push(tpl);
+      existing.recurringId = tpl.id;
+    }
     logTransaction(d, { kind: 'income', action: 'edited', name, amount });
   } else {
-    d.income.push({ id: d.nextIncId++, name, amount, paidBy: DB.session });
+    const entry = { id: d.nextIncId++, name, amount, paidBy: DB.session };
+    if (wantsRecurring) {
+      const tpl = { id: r.nextId++, name, amount, paidBy: DB.session, startPeriod: { y: yearIndex, m: monthIndex }, endPeriod };
+      r.templates.push(tpl);
+      entry.recurringId = tpl.id;
+    }
+    d.income.push(entry);
     logTransaction(d, { kind: 'income', action: 'added', name, amount });
   }
   showToast('Saving…');
