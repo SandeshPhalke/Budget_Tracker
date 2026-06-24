@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Hearth — Family Budget</title>
+<title>Attrangi Budgeter</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
@@ -367,7 +367,7 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
       <div class="brand-mark">
         <div class="brand-icon">🌿</div>
         <div class="topbar-id">
-          <div class="brand-name">Hearth</div>
+          <div class="brand-name">Attrangi Budgeter</div>
           <div class="brand-tag">Money, together.</div>
         </div>
       </div>
@@ -701,18 +701,12 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
         </div>
       </div>
 
-      <div class="progress-wrap">
-        <div class="progress-header">
-          <h2>Savings goal</h2>
-          <button class="icon-btn" onclick="openModal('savingsGoal')">✏️</button>
+      <div class="section">
+        <div class="section-head">
+          <h2>Savings goals</h2>
+          <button class="add-btn" onclick="openModal('goal')">+ Add goal</button>
         </div>
-        <div class="progress-bar">
-          <div class="progress-fill progress-ok" id="sav-goal-fill" style="width:0%"></div>
-        </div>
-        <div class="progress-labels num">
-          <span id="sav-goal-current">₹0 saved</span>
-          <span id="sav-goal-target">Goal ₹0</span>
-        </div>
+        <div id="goals-list"></div>
       </div>
 
       <div class="section">
@@ -851,14 +845,14 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
 <!-- Boot loading overlay -->
 <div id="boot-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px;">
   <div style="font-size:36px;">🌿</div>
-  <div style="font-family:'Lexend',sans-serif;font-size:18px;font-weight:700;color:#f1f0f3;">Hearth</div>
+  <div style="font-family:'Lexend',sans-serif;font-size:18px;font-weight:700;color:#f1f0f3;">Attrangi Budgeter</div>
   <div style="font-size:13px;color:#6f6d7a;">Loading your data…</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================
-   HEARTH — Family Budget Tracker
+   ATTRANGI BUDGETER — Family Budget Tracker
    Cross-device sync via Supabase. All data lives in the cloud.
    ============================================================ */
 
@@ -886,17 +880,7 @@ const BANK_PRESETS = [
   { name: 'Kotak Mahindra', icon: '🏛️', color: 'var(--mint-bg)' },
   { name: 'Paytm Wallet', icon: '📱', color: 'var(--rose-bg)' },
 ];
-const SUGGESTION_POOL = [
-  { name: 'Swiggy', cat: 'food', type: 'variable', amount: () => rand(180,650) },
-  { name: 'Zomato', cat: 'food', type: 'variable', amount: () => rand(200,700) },
-  { name: 'Amazon', cat: 'other', type: 'variable', amount: () => rand(400,3200) },
-  { name: 'Netflix', cat: 'subscriptions', type: 'fixed', amount: () => 649 },
-  { name: 'Uber', cat: 'transport', type: 'variable', amount: () => rand(120,480) },
-  { name: 'Electricity Board', cat: 'utilities', type: 'fixed', amount: () => rand(900,2400) },
-  { name: 'Apollo Pharmacy', cat: 'other', type: 'variable', amount: () => rand(150,900) },
-];
 
-function rand(a,b){ return Math.floor(a + Math.random()*(b-a)); }
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function fmt(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
 function todayKey(){ return new Date().toISOString().slice(0,7); }
@@ -1166,7 +1150,7 @@ async function joinHousehold(){
 
 function copyInvite(){
   const hh = currentHousehold();
-  const text = `Join our Hearth household "${hh.name}": ${hh.inviteCode}`;
+  const text = `Join our Attrangi Budgeter household "${hh.name}": ${hh.inviteCode}`;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(()=>showToast('Invite copied!'));
   } else {
@@ -1191,13 +1175,19 @@ function periodKey(y, m){ return 'y' + y + 'm' + m; }
 function accountsFor(hh, userId){
   if (!hh.accounts) hh.accounts = {};
   if (!hh.accounts[userId]) {
-    hh.accounts[userId] = { banks: [], investments: [], savingsGoal: 0, nextInvId: 1, lastAppliedPeriod: null };
+    hh.accounts[userId] = { banks: [], investments: [], goals: [], nextInvId: 1, nextGoalId: 1, lastAppliedPeriod: null };
   }
   const acc = hh.accounts[userId];
   if (!acc.banks) acc.banks = [];
   if (!acc.investments) acc.investments = [];
-  if (acc.savingsGoal === undefined) acc.savingsGoal = 0;
+  if (!acc.goals) acc.goals = [];
+  if (!acc.nextGoalId) acc.nextGoalId = 1;
   if (!acc.nextInvId) acc.nextInvId = 1;
+  // one-time migration: the old single savingsGoal becomes the first named goal
+  if (acc.savingsGoal && acc.goals.length === 0) {
+    acc.goals.push({ id: acc.nextGoalId++, name: 'Savings goal', target: acc.savingsGoal, targetDate: null });
+  }
+  delete acc.savingsGoal;
   return acc;
 }
 
@@ -1296,7 +1286,9 @@ function monthDataFor(hh, mIdx, userId, yIdx){
     acc.nextInvId = data.nextInvId || (data.investments.length + 1);
   }
   delete data.investments;
-  if (data.savingsGoal && !acc.savingsGoal) acc.savingsGoal = data.savingsGoal;
+  if (data.savingsGoal && !acc.goals.length) {
+    acc.goals.push({ id: acc.nextGoalId++, name: 'Savings goal', target: data.savingsGoal, targetDate: null });
+  }
   delete data.savingsGoal;
   delete data.nextInvId;
 
@@ -1324,26 +1316,10 @@ function myData(){
   return monthDataFor(currentHousehold(), monthIndex, DB.session, yearIndex);
 }
 
-async function seedDemoData(){
-  const d = myData();
-  if (d.expensesFixed.length || d.expensesDaily.length || d.income.length) return;
-  d.expensesFixed = [
-    { id: d.nextExpId++, name:'SBI EMI', amount:27507, cat:'emi', type:'fixed', paidBy: DB.session },
-    { id: d.nextExpId++, name:'HDFC EMI', amount:33888, cat:'emi', type:'fixed', paidBy: DB.session },
-    { id: d.nextExpId++, name:'Rent', amount:6800, cat:'rent', type:'fixed', paidBy: DB.session },
-    { id: d.nextExpId++, name:'Light bill', amount:600, cat:'utilities', type:'fixed', paidBy: DB.session },
-    { id: d.nextExpId++, name:'Insurance', amount:5100, cat:'insurance', type:'fixed', paidBy: DB.session },
-    { id: d.nextExpId++, name:'Parents', amount:16000, cat:'family', type:'fixed', paidBy: DB.session },
-    { id: d.nextExpId++, name:'Subscriptions', amount:2500, cat:'subscriptions', type:'fixed', paidBy: DB.session },
-    { id: d.nextExpId++, name:'Savings', amount:4000, cat:'savings', type:'fixed', paidBy: DB.session },
-  ];
-  d.expensesDaily = [
-    { id: d.nextExpId++, name:'Sabari (food)', amount:1287, cat:'food', type:'variable', paidBy: DB.session },
-    { id: d.nextExpId++, name:'Petrol', amount:1500, cat:'transport', type:'variable', paidBy: DB.session },
-  ];
-  d.income = [{ id: d.nextIncId++, name:'Salary', amount:118944, paidBy: DB.session }];
-  await saveStore();
-}
+/* Demo/sample data seeding was intentionally removed — every new household
+   starts completely empty (no fake salary, EMIs, or bills), since this app
+   is shared with other people and pre-filled numbers would be confusing
+   and look like real financial data. */
 
 /* ============================================================
    CARRY-FORWARD — automatically rolls last month's leftover
@@ -1477,7 +1453,6 @@ function renderLastMonthBanner(){
    ENTER APP
    ============================================================ */
 async function enterApp(){
-  await seedDemoData();
   goTo('app');
   const user = currentUser();
   const hh = currentHousehold();
@@ -1830,11 +1805,7 @@ function renderSavings(){
   const netWorth = totalNetWorth(d);
   document.getElementById('sav-total').textContent = fmt(netWorth);
 
-  const goal = acc.savingsGoal || 0;
-  const pct = goal>0 ? Math.min(100, Math.round(netWorth/goal*100)) : 0;
-  document.getElementById('sav-goal-fill').style.width = pct+'%';
-  document.getElementById('sav-goal-current').textContent = fmt(netWorth)+' saved';
-  document.getElementById('sav-goal-target').textContent = goal>0 ? 'Goal '+fmt(goal) : 'No goal set yet';
+  renderGoals(acc, netWorth);
 
   // the actual amount that was applied to the bank balance — editable, so we read
   // it from acc.lastCarryForward rather than recalculating it live
@@ -1881,14 +1852,91 @@ function renderSavings(){
   `).join('');
 }
 
-async function saveSavingsGoal(){
+/* ============================================================
+   SAVINGS GOALS — multiple named goals (e.g. "Goa Trip", "Diwali").
+   Each goal's progress mirrors total net worth saved so far, capped
+   at its own target — money isn't physically split between goals,
+   so this is simply "how close am I" per goal, not a shared pool.
+   ============================================================ */
+function daysUntil(dateStr){
+  if (!dateStr) return null;
+  const target = new Date(dateStr + 'T00:00:00');
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  return Math.ceil((target - now) / 86400000);
+}
+
+function renderGoals(acc, netWorth){
+  const list = document.getElementById('goals-list');
+  if (!acc.goals.length) {
+    list.innerHTML = `<div class="empty-state"><div class="ic">🎯</div><div class="t">No savings goals yet. Add one for a trip, a gadget, or any event you're saving toward.</div></div>`;
+    return;
+  }
+  list.innerHTML = acc.goals.map(g => {
+    const pct = g.target > 0 ? Math.min(100, Math.round(netWorth / g.target * 100)) : 0;
+    const reached = g.target > 0 && netWorth >= g.target;
+    const overdue = !reached && g.targetDate && daysUntil(g.targetDate) < 0;
+    const barClass = reached ? 'progress-ok' : overdue ? 'progress-over' : 'progress-warn';
+    let dateNote = '';
+    if (g.targetDate) {
+      const days = daysUntil(g.targetDate);
+      if (reached) dateNote = 'Reached 🎉';
+      else if (days === null) dateNote = '';
+      else if (days < 0) dateNote = `${Math.abs(days)} day${Math.abs(days)===1?'':'s'} overdue`;
+      else if (days === 0) dateNote = 'Today is the day';
+      else {
+        const needed = g.target - netWorth;
+        const perDay = needed / days;
+        dateNote = `${days} day${days===1?'':'s'} left · need ${fmt(Math.max(0,Math.round(perDay)))}/day`;
+      }
+    }
+    return `
+      <div class="progress-wrap" style="margin-top:12px;">
+        <div class="progress-header">
+          <h2 style="display:flex;align-items:center;gap:6px;">${g.name}${reached?' ✅':''}</h2>
+          <div style="display:flex;gap:4px;">
+            <button class="icon-btn" onclick="openModal('goal','${g.id}')">✏️</button>
+            <button class="icon-btn" onclick="deleteGoal(${g.id})">🗑</button>
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill ${barClass}" style="width:${pct}%"></div>
+        </div>
+        <div class="progress-labels num">
+          <span>${fmt(Math.min(netWorth,g.target))} saved (${pct}%)</span>
+          <span>Goal ${fmt(g.target)}</span>
+        </div>
+        ${dateNote ? `<div style="font-size:11.5px;color:${overdue?'var(--coral)':'var(--text3)'};margin-top:4px;">${dateNote}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+async function saveGoal(editId){
   const acc = myAccounts();
-  const val = parseFloat(document.getElementById('inp-savings-goal').value) || 0;
-  acc.savingsGoal = val;
+  const name = document.getElementById('inp-goal-name').value.trim();
+  const target = parseFloat(document.getElementById('inp-goal-target').value) || 0;
+  const targetDate = document.getElementById('inp-goal-date').value || null;
+  if (!name || target <= 0) return showToast('Enter a name and target amount');
+
+  if (editId) {
+    const g = acc.goals.find(x=>String(x.id)===String(editId));
+    if (g) { g.name = name; g.target = target; g.targetDate = targetDate; }
+  } else {
+    acc.goals.push({ id: acc.nextGoalId++, name, target, targetDate });
+  }
   await saveStore();
-  closeModal('modal-savingsGoal');
+  closeModal('modal-goal');
   renderAll();
-  showToast('Savings goal updated ✓');
+  showToast('Goal saved ✓');
+}
+
+async function deleteGoal(id){
+  const acc = myAccounts();
+  acc.goals = acc.goals.filter(g=>String(g.id)!==String(id));
+  await saveStore();
+  renderAll();
+  showToast('Goal removed');
 }
 
 /* ============================================================
@@ -2316,16 +2364,20 @@ function openModal(kind, id, defaultType){
           </div>
         </div>
       </div>`;
-  } else if (kind === 'savingsGoal') {
+  } else if (kind === 'goal') {
     const acc = myAccounts();
+    const editing = id ? acc.goals.find(g=>String(g.id)===String(id)) : null;
     html = `
-      <div class="modal-overlay open" id="modal-savingsGoal" onclick="closeModalOnBg(event,'modal-savingsGoal')">
+      <div class="modal-overlay open" id="modal-goal" onclick="closeModalOnBg(event,'modal-goal')">
         <div class="modal" onclick="event.stopPropagation()">
-          <h2>Set savings goal</h2>
-          <div class="form-group"><label>Target amount (bank + investments)</label><input type="number" id="inp-savings-goal" placeholder="0" value="${acc.savingsGoal||''}"></div>
+          <h2>${editing ? 'Edit goal' : 'Add a savings goal'}</h2>
+          <div class="form-group"><label>What's it for?</label><input type="text" id="inp-goal-name" placeholder="e.g. Goa Trip, Diwali, New laptop" value="${editing ? editing.name : ''}"></div>
+          <div class="form-group"><label>Target amount</label><input type="number" id="inp-goal-target" placeholder="0" value="${editing ? editing.target : ''}"></div>
+          <div class="form-group"><label>Target date (optional)</label><input type="date" id="inp-goal-date" value="${editing && editing.targetDate ? editing.targetDate : ''}"></div>
+          <div style="font-size:11.5px;color:var(--text3);margin-top:-6px;margin-bottom:10px;">Progress tracks your total bank + investment balance against this target — it doesn't set money aside separately for each goal.</div>
           <div class="modal-btns">
-            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-savingsGoal')">Cancel</button>
-            <button class="btn btn-primary" style="flex:1" onclick="saveSavingsGoal()">Save</button>
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-goal')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveGoal('${editing ? editing.id : ''}')">Save</button>
           </div>
         </div>
       </div>`;
