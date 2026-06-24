@@ -550,6 +550,2855 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
       <button class="tab" data-tab="income" onclick="switchTab('income')">Income</button>
       <button class="tab" data-tab="bank" onclick="switchTab('bank')">Accounts</button>
       <button class="tab" data-tab="investments" onclick="switchTab('investments')">Investments</button>
+      <button class="tab" data-tab="loans" onclick="switchTab('loans')">Loans</button>
+      <button class="tab" data-tab="savings" onclick="switchTab('savings')">Savings</button>
+      <button class="tab" data-tab="family" onclick="switchTab('family')">Family</button>
+      <button class="tab" data-tab="transactions" onclick="switchTab('transactions')">Transactions</button>
+      <button class="tab" data-tab="emergency" onclick="switchTab('emergency')">Emergency</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="tab-panel active" id="tab-overview">
+      <div id="rollover-banner-slot"></div>
+
+      <div class="summary-grid">
+        <div class="card c-income">
+          <div class="card-label">My income</div>
+          <div class="card-value num" id="ov-income">₹0</div>
+          <div class="card-sub">All sources</div>
+        </div>
+        <div class="card c-expense">
+          <div class="card-label">My expenses</div>
+          <div class="card-value num" id="ov-expenses">₹0</div>
+          <div class="card-sub">This month</div>
+        </div>
+        <div class="card c-save">
+          <div class="card-label">My savings</div>
+          <div class="card-value num" id="ov-savings">₹0</div>
+          <div class="card-sub" id="ov-savings-pct">0% of income</div>
+        </div>
+        <div class="card c-balance">
+          <div class="card-label">Balance</div>
+          <div class="card-value num" id="ov-balance">₹0</div>
+          <div class="card-sub" id="ov-balance-note">After expenses</div>
+        </div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-header">
+          <h2>Budget used</h2>
+          <span class="num" id="ov-pct-label" style="font-size:14px;font-weight:700;">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill progress-ok" id="ov-progress-fill" style="width:0%"></div>
+        </div>
+        <div class="progress-labels num">
+          <span id="ov-progress-left">₹0 spent</span>
+          <span id="ov-progress-right">₹0 remaining</span>
+        </div>
+        <div id="ov-insight" class="insight-box insight-ok"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h3>Expense breakdown</h3></div>
+        <div id="breakdown-list"></div>
+      </div>
+    </div>
+
+    <!-- EXPENSES -->
+    <div class="tab-panel" id="tab-expenses">
+      <div class="section">
+        <div class="section-head">
+          <h2>📌 Fixed monthly bills</h2>
+          <button class="add-btn" onclick="openModal('expense', null, 'fixed')">+ Add</button>
+        </div>
+        <div id="expense-fixed-list"></div>
+        <div class="total-row"><span>Fixed total</span><span class="num" id="exp-fixed-total" style="color:var(--coral)">₹0</span></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>☕ Daily spending log</h2>
+          <button class="add-btn" onclick="openModal('expense', null, 'variable')">+ Add</button>
+        </div>
+        <div id="expense-daily-list"></div>
+        <div class="total-row"><span>Daily total</span><span class="num" id="exp-daily-total" style="color:var(--coral)">₹0</span></div>
+      </div>
+
+      <div class="section">
+        <div class="total-row" style="background:var(--surface3)"><span>Grand total (fixed + daily + savings)</span><span class="num" id="exp-total" style="color:var(--sand)">₹0</span></div>
+      </div>
+    </div>
+
+    <!-- INCOME -->
+    <div class="tab-panel" id="tab-income">
+      <div class="section">
+        <div class="section-head">
+          <h2>Income sources</h2>
+          <button class="add-btn" onclick="openModal('income')">+ Add</button>
+        </div>
+        <div id="income-list"></div>
+        <div class="total-row"><span>Total</span><span class="num" id="inc-total" style="color:var(--mint)">₹0</span></div>
+      </div>
+    </div>
+
+    <!-- BANK / ACCOUNTS -->
+    <div class="tab-panel" id="tab-bank">
+      <div class="section" style="padding:18px 18px 4px; background:none; border:none; margin-bottom:8px;">
+        <h3 style="margin-bottom:4px;">Your accounts</h3>
+        <div style="font-size:12px;color:var(--text3);">Enter your real starting balance once — the app then keeps it updated using your income, expenses, and any carried-forward surplus.</div>
+      </div>
+      <div id="bank-list"></div>
+      <div class="connect-bank-card" onclick="openModal('bank')">
+        <div class="ic">🏦</div>
+        <div class="t">Add a bank account</div>
+        <div class="s">Enter your real starting balance</div>
+      </div>
+    </div>
+
+    <!-- INVESTMENTS -->
+    <div class="tab-panel" id="tab-investments">
+      <div class="section" style="padding:18px 18px 4px; background:none; border:none; margin-bottom:8px;">
+        <h3 style="margin-bottom:4px;">Stocks & mutual funds</h3>
+        <div style="font-size:12px;color:var(--text3);">Add each holding manually and update its current value whenever you check it.</div>
+      </div>
+      <div class="summary-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="card c-save">
+          <div class="card-label">Invested</div>
+          <div class="card-value num" id="inv-invested">₹0</div>
+          <div class="card-sub">Total cost basis</div>
+        </div>
+        <div class="card c-balance">
+          <div class="card-label">Current value</div>
+          <div class="card-value num" id="inv-current">₹0</div>
+          <div class="card-sub" id="inv-gain-note">—</div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-head">
+          <h2>Holdings</h2>
+          <button class="add-btn" onclick="openModal('investment')">+ Add</button>
+        </div>
+        <div id="investment-list"></div>
+      </div>
+    </div>
+
+    <!-- LOANS -->
+    <div class="tab-panel" id="tab-loans">
+      <div class="section" style="padding:18px 18px 4px; background:none; border:none; margin-bottom:8px;">
+        <h3 style="margin-bottom:4px;">Loans</h3>
+        <div style="font-size:12px;color:var(--text3);">Track what you owe and what's owed to you. Link a loan to a recurring EMI bill and its balance reduces automatically each month you pay it.</div>
+      </div>
+      <div class="summary-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="card c-balance">
+          <div class="card-label">You owe</div>
+          <div class="card-value num" id="loan-owe-total" style="color:var(--coral);">₹0</div>
+          <div class="card-sub">Across all loans</div>
+        </div>
+        <div class="card c-save">
+          <div class="card-label">Owed to you</div>
+          <div class="card-value num" id="loan-owed-total" style="color:var(--mint);">₹0</div>
+          <div class="card-sub">Across all loans</div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-head">
+          <h2>You owe</h2>
+          <button class="add-btn" onclick="openModal('loan','','owe')">+ Add</button>
+        </div>
+        <div id="loans-owe-list"></div>
+      </div>
+      <div class="section">
+        <div class="section-head">
+          <h2>Owed to you</h2>
+          <button class="add-btn" onclick="openModal('loan','','owed')">+ Add</button>
+        </div>
+        <div id="loans-owed-list"></div>
+      </div>
+    </div>
+
+    <!-- SAVINGS -->
+    <div class="tab-panel" id="tab-savings">
+      <div class="section" style="padding:18px 18px 4px; background:none; border:none; margin-bottom:8px;">
+        <h3 style="margin-bottom:4px;">Savings</h3>
+        <div style="font-size:12px;color:var(--text3);">Track what you've put away this month, your goal, and what's carried forward from past months.</div>
+      </div>
+      <div class="summary-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="card c-save">
+          <div class="card-label">Saved this month</div>
+          <div class="card-value num" id="sav-month">₹0</div>
+          <div class="card-sub" id="sav-month-pct">0% of income</div>
+        </div>
+        <div class="card c-balance">
+          <div class="card-label">Net worth saved</div>
+          <div class="card-value num" id="sav-total">₹0</div>
+          <div class="card-sub">Bank + investments</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>Savings goals</h2>
+          <button class="add-btn" onclick="openModal('goal')">+ Add goal</button>
+        </div>
+        <div id="goals-list"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h3>Carried forward into this month</h3>
+          <button class="icon-btn" id="sav-carry-edit-btn" onclick="openModal('editCarry')" style="display:none;">✏️</button>
+        </div>
+        <div id="sav-carry-list"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h3>Savings history (last 6 months)</h3></div>
+        <div id="sav-history-list"></div>
+      </div>
+    </div>
+
+
+    <!-- FAMILY -->
+    <div class="tab-panel" id="tab-family">
+      <div class="constellation-wrap">
+        <div class="constellation" id="constellation"></div>
+        <div style="font-size:12.5px;color:var(--text3);text-align:center;max-width:280px;">Combined household snapshot for <span id="family-month-label">this month</span></div>
+      </div>
+      <div class="member-card-grid" id="member-card-grid"></div>
+
+      <div class="section">
+        <div class="section-head">
+          <h3>Who paid what (shared bills)</h3>
+        </div>
+        <div style="padding:4px 18px 0;font-size:12px;color:var(--text3);">Based on bills you've ticked "Shared household bill" while logging your own expenses.</div>
+        <div id="payer-summary-list"></div>
+      </div>
+
+      <div class="section" id="settle-up-section">
+        <div class="section-head"><h3>Settle up</h3></div>
+        <div id="settle-up-content" style="padding:14px 18px;"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h3>Shared bill history</h3></div>
+        <div id="shared-bill-list"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h3>Invite family</h3>
+        </div>
+        <div style="padding:16px 18px;">
+          <div style="font-size:13px;color:var(--text2);line-height:1.5;">Share this code or link so family members can join your household and track their own budget.</div>
+          <div class="invite-box">
+            <code id="invite-code-display">—</code>
+            <button class="btn btn-sm btn-ghost" onclick="copyInvite()">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS LOG -->
+    <div class="tab-panel" id="tab-transactions">
+      <div class="section" style="padding:18px 18px 4px; background:none; border:none; margin-bottom:8px;">
+        <h3 style="margin-bottom:4px;">Transaction history</h3>
+        <div style="font-size:12px;color:var(--text3);">Every expense, income, account, and holding change you've made this month, newest first.</div>
+      </div>
+      <div class="filter-pills" style="display:flex;gap:8px;padding:0 18px 12px;flex-wrap:wrap;">
+        <button class="tab txn-filter-pill active" data-txn-filter="all" onclick="setTxnFilter('all')">All</button>
+        <button class="tab txn-filter-pill" data-txn-filter="expense" onclick="setTxnFilter('expense')">Expenses</button>
+        <button class="tab txn-filter-pill" data-txn-filter="income" onclick="setTxnFilter('income')">Income</button>
+        <button class="tab txn-filter-pill" data-txn-filter="account" onclick="setTxnFilter('account')">Accounts</button>
+        <button class="tab txn-filter-pill" data-txn-filter="investment" onclick="setTxnFilter('investment')">Investments</button>
+      </div>
+      <div id="transaction-list"></div>
+    </div>
+
+    <!-- EMERGENCY FUND -->
+    <div class="tab-panel" id="tab-emergency">
+      <div class="section" style="padding:18px;">
+        <h2>Emergency fund calculator</h2>
+        <div style="font-size:13px;color:var(--text2);margin-top:5px;">Target: <span class="num" id="em-months-val">6</span> months of your expenses</div>
+
+        <div class="em-slider-row">
+          <div class="em-slider-label"><span>Months coverage</span><span class="num" id="em-months-display">6 months</span></div>
+          <input type="range" min="3" max="12" value="6" id="emMonthsSlider" oninput="updateEmergency()">
+        </div>
+        <div class="em-slider-row">
+          <div class="em-slider-label"><span>Current emergency savings</span><span class="num" id="em-current-display">₹0</span></div>
+          <input type="range" min="0" max="1000000" step="5000" value="0" id="emCurrentSlider" oninput="updateEmergency()">
+        </div>
+
+        <div class="emfund-grid">
+          <div class="emfund-metric">
+            <div class="em-label">Monthly expenses</div>
+            <div class="em-value num" id="em-monthly">₹0</div>
+            <div class="em-note">Auto from expenses</div>
+          </div>
+          <div class="emfund-metric">
+            <div class="em-label">Target fund</div>
+            <div class="em-value num" id="em-target" style="color:var(--sand)">₹0</div>
+            <div class="em-note" id="em-target-note">6× monthly</div>
+          </div>
+          <div class="emfund-metric">
+            <div class="em-label">Current saved</div>
+            <div class="em-value num" id="em-current-saved" style="color:var(--sky)">₹0</div>
+            <div class="em-note">From slider above</div>
+          </div>
+          <div class="emfund-metric">
+            <div class="em-label">Gap remaining</div>
+            <div class="em-value num" id="em-gap" style="color:var(--coral)">₹0</div>
+            <div class="em-note" id="em-months-to-fill">At current savings rate</div>
+          </div>
+        </div>
+
+        <div id="em-insight" class="insight-box insight-warn" style="margin-top:14px;"></div>
+
+        <div style="margin-top:16px;">
+          <h3 style="margin-bottom:12px;">Monthly contribution needed</h3>
+          <div class="em-slider-row">
+            <div class="em-slider-label"><span>Timeline to reach goal</span><span class="num" id="em-timeline-display">12 months</span></div>
+            <input type="range" min="3" max="36" value="12" id="emTimelineSlider" oninput="updateEmergency()">
+          </div>
+          <div style="background:var(--sky-bg);border-radius:var(--radius-sm);padding:15px 16px;margin-top:10px;">
+            <div style="font-size:11.5px;color:var(--sky-text);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Monthly saving needed</div>
+            <div style="font-size:27px;font-weight:700;color:var(--sky-text)" class="num" id="em-monthly-needed">₹0</div>
+            <div style="font-size:12px;color:var(--sky-text);margin-top:4px;" id="em-feasibility"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="fab" onclick="quickAdd()">+</button>
+</div>
+
+<div id="modal-root"></div>
+<div class="toast" id="toast"></div>
+
+<!-- Boot loading overlay -->
+<div id="boot-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px;">
+  <div style="font-size:36px;">🌿</div>
+  <div style="font-family:'Lexend',sans-serif;font-size:18px;font-weight:700;color:#f1f0f3;">Attrangi Budgeter</div>
+  <div style="font-size:13px;color:#6f6d7a;">Loading your data…</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============================================================
+   ATTRANGI BUDGETER — Family Budget Tracker
+   Cross-device sync via Supabase. All data lives in the cloud.
+   ============================================================ */
+
+/* ── Supabase client ── */
+const SUPA_URL = 'https://lsyrynzkmyludtaeshnx.supabase.co';
+const SUPA_KEY = 'sb_publishable_uA8YnxsEeZpwxfNL1DKhFQ_kZ-6B1n4';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const ICONS = {
+  emi: '🏦', rent: '🏠', utilities: '💡', food: '🍱', transport: '⛽',
+  insurance: '🛡️', family: '👨‍👩‍👧', subscriptions: '📱', savings: '💎', other: '💼'
+};
+const LABELS = {
+  emi: 'EMI / Loan', rent: 'Rent', utilities: 'Utilities', food: 'Food',
+  transport: 'Transport', insurance: 'Insurance', family: 'Family',
+  subscriptions: 'Subscriptions', savings: 'Savings', other: 'Other'
+};
+const MEMBER_COLORS = { mint:'var(--mint)', lav:'var(--lav)', coral:'var(--coral)', sand:'var(--sand)', sky:'var(--sky)', rose:'var(--rose)' };
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const BANK_PRESETS = [
+  { name: 'HDFC Bank', icon: '🏦', color: 'var(--coral-bg)' },
+  { name: 'SBI', icon: '🏛️', color: 'var(--sky-bg)' },
+  { name: 'ICICI Bank', icon: '🏦', color: 'var(--sand-bg)' },
+  { name: 'Axis Bank', icon: '🏦', color: 'var(--lav-bg)' },
+  { name: 'Kotak Mahindra', icon: '🏛️', color: 'var(--mint-bg)' },
+  { name: 'Paytm Wallet', icon: '📱', color: 'var(--rose-bg)' },
+];
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function fmt(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
+function todayKey(){ return new Date().toISOString().slice(0,7); }
+
+/* ============================================================
+   STORE — everything persisted under one root key
+   ============================================================ */
+/* ============================================================
+   STORE — in-memory DB object, synced to Supabase
+   Structure mirrors the original for zero UI changes.
+   ============================================================ */
+let DB = { users: {}, households: {}, session: null };
+
+/* Local session persistence (just the session userId, not data) */
+function saveSession(uid){ try { localStorage.setItem('hearth_session', uid||''); } catch(e){} }
+function loadSession(){ try { return localStorage.getItem('hearth_session')||null; } catch(e){return null;} }
+
+/* Save the whole DB snapshot to Supabase's key-value store (households table) */
+async function saveStore(){
+  if (!DB.session) return;
+  const hh = currentHousehold();
+  if (!hh) return;
+  // hh.accounts (banks/investments/savings goal/carry-forward) and hh.recurring
+  // (recurring bill templates) are folded into the same JSON blob as hh.data
+  // under reserved keys, since there's no separate database column for either —
+  // without this they were never being saved at all.
+  const payload = { ...hh.data, __accounts__: hh.accounts || {}, __recurring__: hh.recurring || {} };
+  const { error: hhError } = await supa.from('households').upsert({
+    id: hh.id,
+    invite_code: hh.inviteCode,
+    name: hh.name,
+    member_ids: hh.memberIds,
+    data: payload
+  });
+  if (hhError) {
+    console.error('saveStore: households upsert failed', hhError);
+    showToast('⚠️ Could not save — check your connection and try again');
+    throw new Error('saveStore failed: ' + hhError.message);
+  }
+  // persist user profile
+  const u = currentUser();
+  const { error: userError } = await supa.from('users').upsert({
+    id: u.id,
+    name: u.name,
+    pin_hash: u.pinHash,
+    color: u.color,
+    household_id: u.householdId
+  });
+  if (userError) {
+    console.error('saveStore: users upsert failed', userError);
+    showToast('⚠️ Could not save your profile — check your connection');
+    throw new Error('saveStore failed: ' + userError.message);
+  }
+}
+
+/* Reload household data from Supabase into DB */
+async function refreshFromCloud(){
+  const u = currentUser();
+  if (!u || !u.householdId) return;
+  const { data, error } = await supa.from('households').select('*').eq('id', u.householdId).single();
+  if (!error && data) {
+    const raw = data.data || {};
+    const accounts = raw.__accounts__ || {};
+    const recurring = raw.__recurring__ || {};
+    const monthData = { ...raw };
+    delete monthData.__accounts__;
+    delete monthData.__recurring__;
+    DB.households[data.id] = {
+      id: data.id,
+      name: data.name,
+      inviteCode: data.invite_code,
+      memberIds: data.member_ids,
+      data: monthData,
+      accounts: accounts,
+      recurring: recurring
+    };
+    // also pull all household members' profiles
+    const { data: members } = await supa.from('users').select('*').in('id', data.member_ids);
+    if (members) {
+      members.forEach(m => {
+        DB.users[m.id] = { id: m.id, name: m.name, pinHash: m.pin_hash, color: m.color, householdId: m.household_id };
+      });
+    }
+  }
+}
+
+/* ============================================================
+   AUTH FLOW — PIN-based, verified against Supabase users table.
+   PINs are SHA-256 hashed; raw PIN never stored.
+   ============================================================ */
+
+function goTo(screenName){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const map = {
+    welcome: 'screen-welcome', signup: 'screen-signup', signin: 'screen-signin',
+    household: 'screen-household',
+    'create-household': 'screen-create-household', 'join-household': 'screen-join-household',
+    app: 'screen-app'
+  };
+  document.getElementById(map[screenName]).classList.add('active');
+  if (screenName === 'signin') populateSignInProfiles();
+}
+
+async function hashPin(pin){
+  const enc = new TextEncoder().encode('hearth-salt::' + pin);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function populateSignInProfiles(){
+  const sel = document.getElementById('si-user-select');
+  sel.innerHTML = `<option value="">Loading…</option>`;
+  const { data } = await supa.from('users').select('id, name').order('name');
+  if (!data || !data.length) {
+    sel.innerHTML = `<option value="">No accounts yet — create one</option>`;
+    return;
+  }
+  sel.innerHTML = data.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+}
+
+async function signUp(){
+  const name = document.getElementById('su-name').value.trim();
+  const pin = document.getElementById('su-pin').value.trim();
+  const pin2 = document.getElementById('su-pin2').value.trim();
+
+  if (!name) return showToast('Enter your name');
+  if (name.length < 2) return showToast('Name must be at least 2 characters');
+  if (!/^\d{4,6}$/.test(pin)) return showToast('PIN must be 4–6 digits');
+  if (pin !== pin2) return showToast("PINs don't match");
+
+  // Disable button to prevent double-submit
+  const btn = document.getElementById('su-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+  showToast('Checking name…');
+
+  try {
+    // Strict case-insensitive uniqueness check across ALL devices
+    const { data: existing, error: checkErr } = await supa
+      .from('users').select('id').ilike('name', name.toLowerCase());
+    if (checkErr) throw new Error(checkErr.message);
+    if (existing && existing.length > 0) {
+      showToast('That name is already taken — choose a different name or sign in');
+      if (btn) { btn.disabled = false; btn.textContent = 'Create account'; }
+      return;
+    }
+
+    showToast('Creating account…');
+    const pinHash = await hashPin(pin);
+    const newId = uid();
+    const { error } = await supa.from('users').insert({
+      id: newId,
+      name: name,  // store original casing
+      pin_hash: pinHash,
+      color: 'mint',
+      household_id: null
+    });
+    if (error) throw new Error(error.message);
+
+    DB.users[newId] = { id: newId, name, pinHash, color: 'mint', householdId: null };
+    DB.session = newId;
+    saveSession(newId);
+
+    document.getElementById('su-name').value = '';
+    document.getElementById('su-pin').value = '';
+    document.getElementById('su-pin2').value = '';
+
+    goTo('household');
+  } catch(e) {
+    showToast('Error: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Create account'; }
+  }
+}
+
+async function signIn(){
+  const userId = document.getElementById('si-user-select').value;
+  const pin = document.getElementById('si-pin').value.trim();
+  if (!userId) return showToast('Choose your profile first');
+  if (!pin) return showToast('Enter your PIN');
+
+  const btn = document.getElementById('si-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+  showToast('Verifying…');
+
+  try {
+    const { data: user, error } = await supa.from('users').select('*').eq('id', userId).single();
+    if (error || !user) throw new Error('Account not found. Please create an account.');
+
+    const pinHash = await hashPin(pin);
+    if (pinHash !== user.pin_hash) {
+      showToast('Incorrect PIN — try again');
+      if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
+      document.getElementById('si-pin').value = '';
+      document.getElementById('si-pin').focus();
+      return;
+    }
+
+    DB.users[user.id] = { id: user.id, name: user.name, pinHash: user.pin_hash, color: user.color, householdId: user.household_id };
+    DB.session = user.id;
+    saveSession(user.id);
+    document.getElementById('si-pin').value = '';
+
+    if (!user.household_id) {
+      goTo('household');
+    } else {
+      showToast('Loading your data…');
+      await refreshFromCloud();
+      enterApp();
+    }
+  } catch(e) {
+    showToast(e.message || 'Sign in failed');
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign in'; }
+  }
+}
+
+/* ============================================================
+   HOUSEHOLD CREATE / JOIN
+   ============================================================ */
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#hh-color-pick') || e.target.closest('#join-color-pick')) {
+    const wrap = e.target.closest('.pill-select');
+    wrap.querySelectorAll('.pill-opt').forEach(p=>p.classList.remove('sel'));
+    const opt = e.target.closest('.pill-opt');
+    if (opt) opt.classList.add('sel');
+  }
+});
+
+function genInviteCode(name){
+  const base = (name||'HOME').toUpperCase().replace(/[^A-Z]/g,'').slice(0,6) || 'HOME';
+  return base + '-' + uid().toUpperCase().slice(0,4);
+}
+
+async function createHousehold(){
+  const name = document.getElementById('hh-name').value.trim();
+  if (!name) return showToast('Give your household a name');
+  const color = document.querySelector('#hh-color-pick .pill-opt.sel').dataset.color;
+
+  showToast('Creating household…');
+  const hhId = uid();
+  const inviteCode = genInviteCode(name);
+  const hhObj = { id: hhId, name, inviteCode, memberIds: [DB.session], data: {} };
+
+  const { error } = await supa.from('households').insert({
+    id: hhId, name, invite_code: inviteCode, member_ids: [DB.session], data: {}
+  });
+  if (error) return showToast('Error: ' + error.message);
+
+  DB.households[hhId] = hhObj;
+  DB.users[DB.session].householdId = hhId;
+  DB.users[DB.session].color = color;
+
+  await supa.from('users').update({ household_id: hhId, color }).eq('id', DB.session);
+  enterApp();
+}
+
+async function joinHousehold(){
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  if (!code) return showToast('Enter an invite code');
+  const color = document.querySelector('#join-color-pick .pill-opt.sel').dataset.color;
+
+  showToast('Looking up household…');
+  const { data: hh, error } = await supa.from('households').select('*').eq('invite_code', code).single();
+  if (error || !hh) return showToast('No household found with that code');
+
+  const memberIds = hh.member_ids || [];
+  if (!memberIds.includes(DB.session)) memberIds.push(DB.session);
+
+  await supa.from('households').update({ member_ids: memberIds }).eq('id', hh.id);
+  await supa.from('users').update({ household_id: hh.id, color }).eq('id', DB.session);
+
+  DB.households[hh.id] = { id: hh.id, name: hh.name, inviteCode: hh.invite_code, memberIds, data: hh.data || {} };
+  DB.users[DB.session].householdId = hh.id;
+  DB.users[DB.session].color = color;
+
+  await refreshFromCloud();
+  enterApp();
+}
+
+function copyInvite(){
+  const hh = currentHousehold();
+  const text = `Join our Attrangi Budgeter household "${hh.name}": ${hh.inviteCode}`;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(()=>showToast('Invite copied!'));
+  } else {
+    showToast(hh.inviteCode);
+  }
+}
+
+/* ============================================================
+   DATA ACCESS HELPERS
+   ============================================================ */
+function currentUser(){ return DB.users[DB.session]; }
+function currentHousehold(){ return DB.households[currentUser().householdId]; }
+
+let monthIndex = new Date().getMonth(); // 0-11
+let yearIndex = new Date().getFullYear();
+
+function periodKey(y, m){ return 'y' + y + 'm' + m; }
+
+/* Accounts (bank balances, investments, savings goal) are real, ongoing things —
+   they don't reset every month like an expense log does. They live once per
+   household-member, separate from the month-by-month expense/income data. */
+function accountsFor(hh, userId){
+  if (!hh.accounts) hh.accounts = {};
+  if (!hh.accounts[userId]) {
+    hh.accounts[userId] = { banks: [], investments: [], goals: [], loans: [], nextInvId: 1, nextGoalId: 1, nextLoanId: 1, lastAppliedPeriod: null };
+  }
+  const acc = hh.accounts[userId];
+  if (!acc.banks) acc.banks = [];
+  if (!acc.investments) acc.investments = [];
+  if (!acc.goals) acc.goals = [];
+  if (!acc.loans) acc.loans = [];
+  if (!acc.nextGoalId) acc.nextGoalId = 1;
+  if (!acc.nextInvId) acc.nextInvId = 1;
+  if (!acc.nextLoanId) acc.nextLoanId = 1;
+  // one-time migration: the old single savingsGoal becomes the first named goal
+  if (acc.savingsGoal && acc.goals.length === 0) {
+    acc.goals.push({ id: acc.nextGoalId++, name: 'Savings goal', target: acc.savingsGoal, targetDate: null });
+  }
+  delete acc.savingsGoal;
+  return acc;
+}
+
+function myAccounts(){
+  return accountsFor(currentHousehold(), DB.session);
+}
+
+/* ============================================================
+   RECURRING FIXED BILLS — templates that auto-generate into
+   every applicable month until an optional end month.
+   ============================================================ */
+function recurringBillsFor(hh, userId){
+  if (!hh.recurring) hh.recurring = {};
+  if (!hh.recurring[userId]) hh.recurring[userId] = { templates: [], nextId: 1 };
+  const r = hh.recurring[userId];
+  if (!r.templates) r.templates = [];
+  if (!r.nextId) r.nextId = 1;
+  return r;
+}
+function myRecurring(){
+  return recurringBillsFor(currentHousehold(), DB.session);
+}
+/* y1/m1 <= y2/m2 ? */
+function periodLte(y1, m1, y2, m2){
+  if (y1 !== y2) return y1 < y2;
+  return m1 <= m2;
+}
+function templateAppliesTo(tpl, y, m){
+  if (!periodLte(tpl.startPeriod.y, tpl.startPeriod.m, y, m)) return false;
+  if (tpl.endPeriod && !periodLte(y, m, tpl.endPeriod.y, tpl.endPeriod.m)) return false;
+  return true;
+}
+/* Inject any recurring templates that apply to (y,m) and aren't already present
+   (by recurringId) or explicitly skipped for this month, directly into the month's
+   expensesFixed array. Idempotent — safe to call every time the month is opened. */
+function seedRecurringBillsIntoMonth(data, hh, userId, y, m){
+  const r = recurringBillsFor(hh, userId);
+  if (!data.skippedRecurringIds) data.skippedRecurringIds = [];
+  r.templates.forEach(tpl => {
+    if (!templateAppliesTo(tpl, y, m)) return;
+    if (data.skippedRecurringIds.includes(tpl.id)) return;
+    const already = data.expensesFixed.find(e => e.recurringId === tpl.id);
+    if (already) return;
+    data.expensesFixed.push({
+      id: data.nextExpId++, name: tpl.name, amount: tpl.amount, cat: tpl.cat,
+      type: 'fixed', paidBy: tpl.paidBy, shared: tpl.shared, recurringId: tpl.id
+    });
+  });
+}
+
+function monthDataFor(hh, mIdx, userId, yIdx){
+  const y = (yIdx === undefined) ? yearIndex : yIdx;
+  const mKey = periodKey(y, mIdx);
+  // migrate legacy data (no year) the first time it's touched for the current year
+  if (!hh.data[mKey] && hh.data['m'+mIdx] && y === new Date().getFullYear()) {
+    hh.data[mKey] = hh.data['m'+mIdx];
+  }
+  if (!hh.data[mKey]) hh.data[mKey] = {};
+  if (!hh.data[mKey][userId]) {
+    hh.data[mKey][userId] = {
+      expensesFixed: [],
+      expensesDaily: [],
+      income: [],
+      transactions: [],
+      emergency: { months: 6, current: 0, timeline: 12 },
+      nextExpId: 1,
+      nextIncId: 1,
+      rolloverApplied: false
+    };
+  }
+  const data = hh.data[mKey][userId];
+  // migrate legacy single "expenses" array into fixed/daily split
+  if (data.expenses && !data._migratedExpenses) {
+    data.expensesFixed = data.expenses.filter(e=>e.type==='fixed' || e.cat==='savings' || e.type==='rollover');
+    data.expensesDaily = data.expenses.filter(e=>e.type==='variable');
+    data._migratedExpenses = true;
+    delete data.expenses;
+  }
+  if (!data.expensesFixed) data.expensesFixed = [];
+  if (!data.expensesDaily) data.expensesDaily = [];
+  if (!data.transactions) data.transactions = [];
+  seedRecurringBillsIntoMonth(data, hh, userId, y, mIdx);
+
+  // one-time migration: pull any banks/investments/savingsGoal that used to live
+  // on this specific month over into the new persistent accounts store
+  const acc = accountsFor(hh, userId);
+  if (data.banks && data.banks.length && !acc.banks.length) {
+    acc.banks = data.banks.map(b => ({
+      id: b.id, name: b.name, icon: b.icon, color: b.color, last4: b.last4,
+      balance: (b.balance !== undefined) ? b.balance : (b.startingBalance || 0)
+    }));
+  }
+  delete data.banks;
+  if (data.investments && data.investments.length && !acc.investments.length) {
+    acc.investments = data.investments;
+    acc.nextInvId = data.nextInvId || (data.investments.length + 1);
+  }
+  delete data.investments;
+  if (data.savingsGoal && !acc.goals.length) {
+    acc.goals.push({ id: acc.nextGoalId++, name: 'Savings goal', target: data.savingsGoal, targetDate: null });
+  }
+  delete data.savingsGoal;
+  delete data.nextInvId;
+
+  return data;
+}
+
+function allExpenses(d){ return [...d.expensesFixed, ...d.expensesDaily]; }
+
+/* ============================================================
+   TRANSACTIONS LOG — a running, timestamped history of every
+   expense/income add/edit/delete, kept per month per user.
+   ============================================================ */
+function logTransaction(d, entry){
+  if (!d.transactions) d.transactions = [];
+  d.transactions.unshift({
+    id: uid(),
+    at: new Date().toISOString(),
+    ...entry
+  });
+  // keep history bounded so storage doesn't grow unbounded
+  if (d.transactions.length > 300) d.transactions.length = 300;
+}
+
+function myData(){
+  return monthDataFor(currentHousehold(), monthIndex, DB.session, yearIndex);
+}
+
+/* Demo/sample data seeding was intentionally removed — every new household
+   starts completely empty (no fake salary, EMIs, or bills), since this app
+   is shared with other people and pre-filled numbers would be confusing
+   and look like real financial data. */
+
+/* ============================================================
+   CARRY-FORWARD — automatically rolls last month's leftover
+   balance into this month's savings AND into the bank balance.
+   ============================================================ */
+function prevPeriod(y, m){
+  return m === 0 ? { y: y-1, m: 11 } : { y, m: m-1 };
+}
+function nextPeriod(y, m){
+  return m === 11 ? { y: y+1, m: 0 } : { y, m: m+1 };
+}
+function periodIsPast(y, m){
+  const now = new Date();
+  if (y < now.getFullYear()) return true;
+  if (y > now.getFullYear()) return false;
+  return m < now.getMonth();
+}
+
+/* Each completed calendar month's net (income - expenses - savings) is applied
+   exactly once to the real, ongoing bank balance — like a bank statement closing
+   out at month-end. We walk forward from the last-applied period to "today",
+   applying every completed month we haven't applied yet. This naturally carries
+   leftover (or shortfall) forward without ever double-counting it, and it works
+   correctly with any number of accounts since each keeps one running balance.
+   We also remember the most recent carry-forward amount/source month so it can
+   be shown on the Savings tab and corrected by hand if it's wrong. */
+function applyCompletedMonthsToBalance(){
+  const hh = currentHousehold();
+  const acc = myAccounts();
+  if (!acc.banks.length && !acc.loans.length) return; // nothing to apply to yet
+
+  let { y, m } = acc.lastAppliedPeriod
+    ? nextPeriod(acc.lastAppliedPeriod.y, acc.lastAppliedPeriod.m)
+    : prevPeriod(yearIndex, monthIndex); // first run: start from the month before the one being viewed
+
+  let appliedAny = false;
+  let guard = 0;
+  while (periodIsPast(y, m) && guard < 600) {
+    guard++;
+    const key = periodKey(y, m);
+    const monthData = hh.data[key] && hh.data[key][DB.session];
+    if (monthData) {
+      const income = monthData.income.reduce((a,i)=>a+i.amount,0);
+      const expenses = allExpenses(monthData).filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0);
+      const savings = allExpenses(monthData).filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0);
+      const net = income - expenses - savings;
+      if (net !== 0 && acc.banks.length) {
+        const totalStarting = acc.banks.reduce((a,b)=>a+(b.balance||0), 0);
+        acc.banks.forEach(b => {
+          const share = totalStarting > 0 ? (b.balance||0)/totalStarting : 1/acc.banks.length;
+          b.balance = (b.balance||0) + net * share;
+        });
+      }
+      acc.lastCarryForward = { amount: net, fromPeriod: { y, m } };
+
+      // Loans I owe that are linked to a recurring EMI: each completed month
+      // that the EMI was actually logged, reduce that loan's outstanding
+      // balance by the EMI amount paid. Walking month-by-month (just like the
+      // bank balance above) means each payment is applied exactly once, in
+      // order, and never double-counted even if you check back later.
+      // (Money owed TO you has no EMI concept, so it's always updated by hand.)
+      if (acc.loans.length) {
+        const monthExpenses = allExpenses(monthData);
+        acc.loans.forEach(loan => {
+          if (loan.direction !== 'owe' || !loan.linkedExpenseId) return;
+          const paidThisMonth = monthExpenses.find(e => e.recurringId === loan.linkedExpenseId);
+          if (paidThisMonth) {
+            loan.balance = Math.max(0, (loan.balance||0) - paidThisMonth.amount);
+          }
+        });
+      }
+    }
+    acc.lastAppliedPeriod = { y, m };
+    appliedAny = true;
+    const nxt = nextPeriod(y, m);
+    y = nxt.y; m = nxt.m;
+  }
+  if (appliedAny) saveStore();
+}
+
+/* Correct the most recent carry-forward amount by hand. We apply only the
+   difference between the new and old amount to the bank balances (split the
+   same proportional way), so this never double-counts the part that was
+   already applied. */
+async function editCarryForward(newAmount){
+  const acc = myAccounts();
+  if (!acc.lastCarryForward) return;
+  const oldAmount = acc.lastCarryForward.amount || 0;
+  const delta = newAmount - oldAmount;
+  if (delta !== 0 && acc.banks.length) {
+    const totalStarting = acc.banks.reduce((a,b)=>a+(b.balance||0), 0);
+    acc.banks.forEach(b => {
+      const share = totalStarting > 0 ? (b.balance||0)/totalStarting : 1/acc.banks.length;
+      b.balance = (b.balance||0) + delta * share;
+    });
+  }
+  acc.lastCarryForward.amount = newAmount;
+  logTransaction(myData(), { kind: 'account', action: 'edited', name: 'Carried forward amount corrected', amount: newAmount });
+  await saveStore();
+  closeModal('modal-editCarry');
+  renderAll();
+  showToast('Carried-forward amount updated ✓');
+}
+
+/* For display only: the current (not-yet-closed) month's running balance is the
+   already-applied total plus this month's net-so-far, split the same way. */
+function bankCurrentBalance(d, bank){
+  const acc = myAccounts();
+  const net = totalIncome(d) - totalExpenses(d) - totalSavings(d);
+  const totalBase = acc.banks.reduce((a,b)=>a+(b.balance||0), 0);
+  const share = totalBase > 0 ? (bank.balance||0)/totalBase : (acc.banks.length ? 1/acc.banks.length : 0);
+  return (bank.balance||0) + net * share;
+}
+function totalBankBalance(d){
+  return myAccounts().banks.reduce((a,b)=>a+bankCurrentBalance(d,b),0);
+}
+function totalInvestmentValue(d){
+  return myAccounts().investments.reduce((a,i)=>a+(i.currentValue||0),0);
+}
+/* Savings-goal progress intentionally tracks bank + investments only —
+   not debt — so a goal like "Goa Trip" isn't dragged down by an unrelated
+   home loan. Loans are shown on their own tab with their own clear totals. */
+function totalNetWorth(d){
+  return totalBankBalance(d) + totalInvestmentValue(d);
+}
+function totalLoansOwed(d){
+  return myAccounts().loans.filter(l=>l.direction==='owe').reduce((a,l)=>a+(l.balance||0),0);
+}
+function totalLoansOwedToMe(d){
+  return myAccounts().loans.filter(l=>l.direction==='owed').reduce((a,l)=>a+(l.balance||0),0);
+}
+/* True net worth including debt, for anyone who wants the full picture. */
+function totalNetWorthWithDebt(d){
+  return totalNetWorth(d) + totalLoansOwedToMe(d) - totalLoansOwed(d);
+}
+
+function renderLastMonthBanner(){
+  const slot = document.getElementById('rollover-banner-slot');
+  const hh = currentHousehold();
+  const { y: py, m: pm } = prevPeriod(yearIndex, monthIndex);
+  const prevKey = periodKey(py, pm);
+  const prev = hh.data[prevKey] && hh.data[prevKey][DB.session];
+  if (!prev || !(prev.income.length || allExpenses(prev).length)) { slot.innerHTML = ''; return; }
+
+  const income = prev.income.reduce((a,i)=>a+i.amount,0);
+  const expenses = allExpenses(prev).filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0);
+  const savings = allExpenses(prev).filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0);
+  const net = income - expenses - savings;
+  if (net === 0) { slot.innerHTML = ''; return; }
+
+  slot.innerHTML = `
+    <div class="rollover-banner">
+      <div class="ic">${net>0 ? '🌙' : '⚠️'}</div>
+      <div>
+        <b>${fmt(Math.abs(net))} ${net>0?'left over':'shortfall'}</b> from ${MONTHS[pm]} ${py} has been carried into your account balance automatically.
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   ENTER APP
+   ============================================================ */
+async function enterApp(){
+  goTo('app');
+  const user = currentUser();
+  const hh = currentHousehold();
+  document.getElementById('topbar-name').textContent = user.name || 'You';
+  document.getElementById('topbar-house').textContent = hh.name;
+  document.getElementById('me-avatar').textContent = (user.name||'U')[0].toUpperCase();
+  document.getElementById('me-avatar').style.background = MEMBER_COLORS[user.color] || 'var(--mint)';
+  document.getElementById('invite-code-display').textContent = hh.inviteCode;
+
+  const yearSelect = document.getElementById('yearSelect');
+  const thisYear = new Date().getFullYear();
+  if (!yearSelect.options.length) {
+    for (let y = thisYear - 5; y <= thisYear + 1; y++) {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      yearSelect.appendChild(opt);
+    }
+  }
+  yearSelect.value = yearIndex;
+  document.getElementById('monthSelect').selectedIndex = monthIndex;
+  renderEverything();
+}
+
+async function syncFromCloud(){
+  showToast('Refreshing…');
+  await refreshFromCloud();
+  renderEverything();
+  showToast('Up to date ✓');
+}
+
+function onMonthChange(){
+  monthIndex = document.getElementById('monthSelect').selectedIndex;
+  yearIndex = parseInt(document.getElementById('yearSelect').value, 10) || yearIndex;
+  seedFreshMonthIfFirst();
+  renderEverything();
+}
+
+function seedFreshMonthIfFirst(){
+  // only the very first ever month gets demo seed data; others start blank
+}
+
+/* ============================================================
+   TAB SWITCHING
+   ============================================================ */
+function switchTab(name){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
+  renderAll();
+}
+
+/* ============================================================
+   CALCULATIONS
+   ============================================================ */
+function totalExpenses(d){ return allExpenses(d).filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0); }
+function totalSavings(d){ return allExpenses(d).filter(e=>e.cat==='savings').reduce((a,e)=>a+e.amount,0); }
+function totalIncome(d){ return d.income.reduce((a,i)=>a+i.amount,0); }
+function totalFixed(d){ return d.expensesFixed.filter(e=>e.cat!=='savings').reduce((a,e)=>a+e.amount,0); }
+function totalDaily(d){ return d.expensesDaily.reduce((a,e)=>a+e.amount,0); }
+
+/* ============================================================
+   RENDER: OVERVIEW
+   ============================================================ */
+function renderOverview(){
+  const d = myData();
+  const income = totalIncome(d);
+  const expenses = totalExpenses(d);
+  const savings = totalSavings(d);
+  const total = expenses + savings;
+  const balance = income - total;
+  const pct = income > 0 ? Math.round((total/income)*100) : 0;
+  const savingsPct = income > 0 ? Math.round((savings/income)*100) : 0;
+
+  document.getElementById('ov-income').textContent = fmt(income);
+  document.getElementById('ov-expenses').textContent = fmt(expenses);
+  document.getElementById('ov-savings').textContent = fmt(savings);
+  document.getElementById('ov-savings-pct').textContent = savingsPct+'% of income';
+  document.getElementById('ov-balance').textContent = fmt(balance);
+  document.getElementById('ov-balance-note').textContent = balance>=0 ? 'Surplus 🎉' : 'Deficit ⚠️';
+
+  const fill = document.getElementById('ov-progress-fill');
+  fill.style.width = Math.min(pct,100)+'%';
+  fill.className = 'progress-fill '+(pct<75?'progress-ok':pct<100?'progress-warn':'progress-over');
+  document.getElementById('ov-pct-label').textContent = pct+'%';
+  document.getElementById('ov-progress-left').textContent = fmt(total)+' spent';
+  document.getElementById('ov-progress-right').textContent = fmt(Math.max(0,income-total))+' remaining';
+
+  const insight = document.getElementById('ov-insight');
+  if (balance < 0) {
+    insight.className='insight-box insight-danger';
+    insight.textContent = `⚠️ You're overspending by ${fmt(Math.abs(balance))} this month. Consider trimming variable expenses.`;
+  } else if (savingsPct < 15) {
+    insight.className='insight-box insight-warn';
+    insight.textContent = `💡 Saving ${savingsPct}% of income. Experts suggest at least 20%. Try increasing savings by ${fmt(Math.max(0,income*0.2-savings))}/month.`;
+  } else {
+    insight.className='insight-box insight-ok';
+    insight.textContent = `✅ Nice — you're saving ${savingsPct}% of income (${fmt(savings)}/mo). Balance after everything: ${fmt(balance)}.`;
+  }
+
+  const byCategory = {};
+  allExpenses(d).forEach(e => { byCategory[e.cat] = (byCategory[e.cat]||0) + e.amount; });
+  const sorted = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]);
+  const breakdown = document.getElementById('breakdown-list');
+  if (!sorted.length) {
+    breakdown.innerHTML = `<div class="empty-state"><div class="ic">🌱</div><div class="t">No expenses logged yet this month.</div></div>`;
+  } else {
+    breakdown.innerHTML = sorted.map(([cat,amt])=>{
+      const pctCat = total>0 ? Math.round((amt/total)*100) : 0;
+      return `<div class="row">
+        <div class="row-icon">${ICONS[cat]||'💰'}</div>
+        <div class="row-info">
+          <div class="row-name">${LABELS[cat]||cat}</div>
+          <div class="progress-bar" style="height:5px;margin-top:6px;background:var(--bg-deep)">
+            <div class="progress-fill" style="width:${pctCat}%;background:var(--sky)"></div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="row-amount num" style="color:var(--text)">${fmt(amt)}</div>
+          <div style="font-size:11.5px;color:var(--text3)" class="num">${pctCat}%</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  applyCompletedMonthsToBalance();
+  renderLastMonthBanner();
+}
+
+/* ============================================================
+   RENDER: EXPENSES / INCOME
+   ============================================================ */
+function memberChip(userId){
+  const u = DB.users[userId];
+  if (!u) return '';
+  return `<span class="member-chip"><span class="avatar-dot dot" style="background:${MEMBER_COLORS[u.color]||'var(--mint)'}">${(u.name||'?')[0].toUpperCase()}</span>${u.name.split(' ')[0]}</span>`;
+}
+
+function expenseRowHtml(e){
+  const payerName = e.paidBy && DB.users[e.paidBy] ? DB.users[e.paidBy].name.split(' ')[0] : '';
+  return `
+      <div class="row">
+        <div class="row-icon">${ICONS[e.cat]||'💰'}</div>
+        <div class="row-info">
+          <div class="row-name">${e.name}${e.recurringId ? ' <span title="Repeats every month" style="font-size:11px;">🔁</span>' : ''}</div>
+          <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;align-items:center;">
+            <span class="tag tag-${e.cat==='emi'?'emi':e.cat==='savings'?'saving':(e.type==='rollover'?'rollover':e.type)}">${LABELS[e.cat]||e.cat}</span>
+            ${e.shared ? '<span class="tag" style="background:var(--lav-bg);color:var(--lav-text);">Shared</span>' : ''}
+            ${payerName ? `<span style="font-size:11px;color:var(--text3);">Paid by ${payerName}</span>` : ''}
+          </div>
+        </div>
+        <div class="row-amount expense num">${fmt(e.amount)}</div>
+        <div class="row-actions">
+          <button class="icon-btn" onclick="openModal('expense','${e.id}')">✏️</button>
+          <button class="icon-btn" onclick="deleteExpense('${e.id}')">🗑</button>
+        </div>
+      </div>`;
+}
+
+function renderExpenses(){
+  const d = myData();
+  const fixedList = document.getElementById('expense-fixed-list');
+  const dailyList = document.getElementById('expense-daily-list');
+
+  if (!d.expensesFixed.length) {
+    fixedList.innerHTML = `<div class="empty-state"><div class="ic">🧾</div><div class="t">No fixed bills yet. Tap "+ Add" to log one.</div></div>`;
+  } else {
+    fixedList.innerHTML = d.expensesFixed.map(expenseRowHtml).join('');
+  }
+
+  if (!d.expensesDaily.length) {
+    dailyList.innerHTML = `<div class="empty-state"><div class="ic">☕</div><div class="t">No day-to-day spending logged yet.</div></div>`;
+  } else {
+    dailyList.innerHTML = d.expensesDaily.map(expenseRowHtml).join('');
+  }
+
+  document.getElementById('exp-fixed-total').textContent = fmt(totalFixed(d));
+  document.getElementById('exp-daily-total').textContent = fmt(totalDaily(d));
+  document.getElementById('exp-total').textContent = fmt(totalExpenses(d) + totalSavings(d));
+}
+
+function renderIncome(){
+  const d = myData();
+  const list = document.getElementById('income-list');
+  if (!d.income.length) {
+    list.innerHTML = `<div class="empty-state"><div class="ic">💼</div><div class="t">No income sources yet.</div></div>`;
+  } else {
+    list.innerHTML = d.income.map(i=>`
+      <div class="row">
+        <div class="row-icon" style="background:var(--mint-bg)">💼</div>
+        <div class="row-info">
+          <div class="row-name">${i.name}</div>
+          ${i.type==='rollover' ? '<div style="margin-top:4px;"><span class="tag tag-rollover">Carried forward</span></div>' : ''}
+        </div>
+        <div class="row-amount income num">${fmt(i.amount)}</div>
+        <div class="row-actions">
+          <button class="icon-btn" onclick="openModal('income','${i.id}')">✏️</button>
+          <button class="icon-btn" onclick="deleteIncome('${i.id}')">🗑</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  document.getElementById('inc-total').textContent = fmt(totalIncome(d));
+}
+
+async function deleteExpense(id){
+  const d = myData();
+  const existing = d.expensesFixed.find(e=>String(e.id)===String(id)) || d.expensesDaily.find(e=>String(e.id)===String(id));
+  if (!existing) return;
+
+  if (existing.recurringId) {
+    const stopForever = await confirmDialog(
+      'This is a repeating bill',
+      'Do you want to remove it from just this month, or stop it from repeating in future months too?',
+      'Just this month', 'Stop repeating'
+    );
+    if (stopForever) {
+      const r = myRecurring();
+      const tpl = r.templates.find(t=>t.id===existing.recurringId);
+      if (tpl) tpl.endPeriod = prevPeriod(yearIndex, monthIndex); // ends before this month
+    } else {
+      if (!d.skippedRecurringIds) d.skippedRecurringIds = [];
+      d.skippedRecurringIds.push(existing.recurringId);
+    }
+  }
+
+  d.expensesFixed = d.expensesFixed.filter(e=>String(e.id)!==String(id));
+  d.expensesDaily = d.expensesDaily.filter(e=>String(e.id)!==String(id));
+  logTransaction(d, { kind: 'expense', action: 'deleted', name: existing.name, amount: existing.amount, cat: existing.cat, paidBy: existing.paidBy, shared: existing.shared });
+  await saveStore(); renderAll();
+  showToast('Expense removed');
+}
+async function deleteIncome(id){
+  const d = myData();
+  const existing = d.income.find(i=>String(i.id)===String(id));
+  d.income = d.income.filter(i=>String(i.id)!==String(id));
+  if (existing) logTransaction(d, { kind: 'income', action: 'deleted', name: existing.name, amount: existing.amount });
+  await saveStore(); renderAll();
+  showToast('Income removed');
+}
+
+/* ============================================================
+   RENDER: BANK ACCOUNTS (mock)
+   ============================================================ */
+function renderBank(){
+  const d = myData();
+  const acc = myAccounts();
+  const list = document.getElementById('bank-list');
+  if (!acc.banks.length) {
+    list.innerHTML = '';
+  } else {
+    list.innerHTML = acc.banks.map(b => {
+      const bal = bankCurrentBalance(d, b);
+      return `
+      <div class="bank-card">
+        <div class="bank-logo" style="background:${b.color}">${b.icon}</div>
+        <div class="bank-info">
+          <div class="bank-name">${b.name}</div>
+          <div class="bank-meta">${b.last4 ? '•••• '+b.last4 : 'Manual account'}</div>
+        </div>
+        <div class="bank-balance">
+          <div class="v num">${fmt(bal)}</div>
+          <div class="l">balance</div>
+        </div>
+        <button class="icon-btn" onclick="openModal('bank','${b.id}')" style="margin-left:4px;">✏️</button>
+        <button class="icon-btn" onclick="disconnectBank('${b.id}')">🗑</button>
+      </div>
+    `;
+    }).join('');
+  }
+}
+
+async function disconnectBank(id){
+  const acc = myAccounts();
+  const existing = acc.banks.find(b=>b.id===id);
+  acc.banks = acc.banks.filter(b=>b.id!==id);
+  if (existing) logTransaction(myData(), { kind: 'account', action: 'removed', name: existing.name, amount: existing.balance||0 });
+  await saveStore(); renderAll();
+  showToast('Account removed');
+}
+
+/* ============================================================
+   RENDER: INVESTMENTS (stocks & mutual funds, manual entry)
+   ============================================================ */
+function investmentRowHtml(i){
+  const gain = (i.currentValue||0) - (i.invested||0);
+  const gainPct = i.invested ? Math.round((gain/i.invested)*100) : 0;
+  const gainColor = gain >= 0 ? 'var(--mint)' : 'var(--coral)';
+  return `
+    <div class="row">
+      <div class="row-icon">${i.kind==='mf' ? '📈' : '📊'}</div>
+      <div class="row-info">
+        <div class="row-name">${i.name}</div>
+        <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;">
+          <span class="tag">${i.kind==='mf' ? 'Mutual fund' : 'Stock'}</span>
+          <span style="font-size:11.5px;color:${gainColor}" class="num">${gain>=0?'+':''}${fmt(gain)} (${gainPct}%)</span>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="row-amount num" style="color:var(--text)">${fmt(i.currentValue||0)}</div>
+        <div style="font-size:11px;color:var(--text3)" class="num">invested ${fmt(i.invested||0)}</div>
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn" onclick="openModal('investment','${i.id}')">✏️</button>
+        <button class="icon-btn" onclick="deleteInvestment('${i.id}')">🗑</button>
+      </div>
+    </div>`;
+}
+
+function renderInvestments(){
+  const acc = myAccounts();
+  const d = myData();
+  const list = document.getElementById('investment-list');
+  if (!acc.investments.length) {
+    list.innerHTML = `<div class="empty-state"><div class="ic">📈</div><div class="t">No holdings yet. Tap "+ Add" to log a stock or mutual fund.</div></div>`;
+  } else {
+    list.innerHTML = acc.investments.map(investmentRowHtml).join('');
+  }
+  const invested = acc.investments.reduce((a,i)=>a+(i.invested||0),0);
+  const current = totalInvestmentValue(d);
+  const gain = current - invested;
+  document.getElementById('inv-invested').textContent = fmt(invested);
+  document.getElementById('inv-current').textContent = fmt(current);
+  const note = document.getElementById('inv-gain-note');
+  note.textContent = (gain>=0?'+':'') + fmt(gain) + ' overall';
+  note.style.color = gain>=0 ? 'var(--mint)' : 'var(--coral)';
+}
+
+async function deleteInvestment(id){
+  const acc = myAccounts();
+  const existing = acc.investments.find(i=>String(i.id)===String(id));
+  acc.investments = acc.investments.filter(i=>String(i.id)!==String(id));
+  if (existing) logTransaction(myData(), { kind: 'investment', action: 'removed', name: existing.name, amount: existing.currentValue||0 });
+  await saveStore(); renderAll();
+  showToast('Holding removed');
+}
+
+/* ============================================================
+   RENDER: LOANS
+   Two directions: "owe" (you owe someone — home loan, personal
+   loan, credit card debt) and "owed" (someone owes you). Only an
+   "owe" loan can be linked to a recurring EMI bill, in which case
+   applyCompletedMonthsToBalance() reduces its balance automatically
+   each month that EMI was actually paid. Everything else is a plain
+   manual balance you update by hand whenever you check it.
+   ============================================================ */
+function loanRowHtml(l){
+  const linkedTpl = l.linkedExpenseId ? myRecurring().templates.find(t=>t.id===l.linkedExpenseId) : null;
+  return `
+    <div class="row">
+      <div class="row-icon">${l.direction==='owe' ? '📤' : '📥'}</div>
+      <div class="row-info">
+        <div class="row-name">${l.name}</div>
+        <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;">
+          ${linkedTpl ? `<span class="tag" title="Auto-reduces with this EMI">🔁 ${linkedTpl.name}</span>` : ''}
+          ${l.principal ? `<span style="font-size:11.5px;color:var(--text3)" class="num">of ${fmt(l.principal)}</span>` : ''}
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="row-amount num" style="color:${l.direction==='owe'?'var(--coral)':'var(--mint)'}">${fmt(l.balance||0)}</div>
+      </div>
+      <div class="row-actions">
+        <button class="icon-btn" onclick="openModal('loan','${l.id}')">✏️</button>
+        <button class="icon-btn" onclick="deleteLoan('${l.id}')">🗑</button>
+      </div>
+    </div>`;
+}
+
+function renderLoans(){
+  const acc = myAccounts();
+  const d = myData();
+  const oweList = document.getElementById('loans-owe-list');
+  const owedList = document.getElementById('loans-owed-list');
+  const owe = acc.loans.filter(l=>l.direction==='owe');
+  const owed = acc.loans.filter(l=>l.direction==='owed');
+
+  oweList.innerHTML = owe.length
+    ? owe.map(loanRowHtml).join('')
+    : `<div class="empty-state"><div class="ic">📤</div><div class="t">No loans logged. Tap "+ Add" for a home loan, personal loan, or credit card balance.</div></div>`;
+
+  owedList.innerHTML = owed.length
+    ? owed.map(loanRowHtml).join('')
+    : `<div class="empty-state"><div class="ic">📥</div><div class="t">Nobody owes you anything logged here yet.</div></div>`;
+
+  document.getElementById('loan-owe-total').textContent = fmt(totalLoansOwed(d));
+  document.getElementById('loan-owed-total').textContent = fmt(totalLoansOwedToMe(d));
+}
+
+async function saveLoan(editId){
+  const acc = myAccounts();
+  const name = document.getElementById('inp-loan-name').value.trim();
+  const direction = document.getElementById('inp-loan-direction').value;
+  const principal = parseFloat(document.getElementById('inp-loan-principal').value) || 0;
+  const balance = parseFloat(document.getElementById('inp-loan-balance').value) || 0;
+  const linkSel = document.getElementById('inp-loan-link');
+  const linkedExpenseId = (direction === 'owe' && linkSel && linkSel.value) ? parseInt(linkSel.value, 10) : null;
+  if (!name || balance < 0) return showToast('Enter a name and outstanding amount');
+
+  if (editId) {
+    const l = acc.loans.find(x=>String(x.id)===String(editId));
+    if (l) { l.name = name; l.direction = direction; l.principal = principal; l.balance = balance; l.linkedExpenseId = linkedExpenseId; }
+    logTransaction(myData(), { kind: 'loan', action: 'edited', name, amount: balance });
+  } else {
+    acc.loans.push({ id: acc.nextLoanId++, name, direction, principal, balance, linkedExpenseId });
+    logTransaction(myData(), { kind: 'loan', action: 'added', name, amount: balance });
+  }
+  await saveStore();
+  closeModal('modal-loan');
+  renderAll();
+  showToast('Loan saved ✓');
+}
+
+async function deleteLoan(id){
+  const acc = myAccounts();
+  const existing = acc.loans.find(l=>String(l.id)===String(id));
+  acc.loans = acc.loans.filter(l=>String(l.id)!==String(id));
+  if (existing) logTransaction(myData(), { kind: 'loan', action: 'removed', name: existing.name, amount: existing.balance||0 });
+  await saveStore(); renderAll();
+  showToast('Loan removed');
+}
+
+/* ============================================================
+   RENDER: SAVINGS
+   ============================================================ */
+function renderSavings(){
+  const d = myData();
+  const hh = currentHousehold();
+  const acc = myAccounts();
+  const income = totalIncome(d);
+  const savedThisMonth = totalSavings(d);
+  document.getElementById('sav-month').textContent = fmt(savedThisMonth);
+  document.getElementById('sav-month-pct').textContent = (income? Math.round(savedThisMonth/income*100):0) + '% of income';
+
+  const netWorth = totalNetWorth(d);
+  document.getElementById('sav-total').textContent = fmt(netWorth);
+
+  renderGoals(acc, netWorth);
+
+  // the actual amount that was applied to the bank balance — editable, so we read
+  // it from acc.lastCarryForward rather than recalculating it live
+  const carryList = document.getElementById('sav-carry-list');
+  const editBtn = document.getElementById('sav-carry-edit-btn');
+  const lc = acc.lastCarryForward;
+  if (!lc) {
+    carryList.innerHTML = `<div class="empty-state"><div class="ic">↪️</div><div class="t">No prior month's data to carry forward yet.</div></div>`;
+    editBtn.style.display = 'none';
+  } else {
+    const { y: py, m: pm } = lc.fromPeriod;
+    carryList.innerHTML = `
+      <div class="row">
+        <div class="row-icon">↪️</div>
+        <div class="row-info"><div class="row-name">From ${MONTHS[pm]} ${py}</div></div>
+        <div class="row-amount num" style="color:${lc.amount>=0?'var(--mint)':'var(--coral)'}">${lc.amount>=0?'+':''}${fmt(lc.amount)}</div>
+      </div>
+    `;
+    editBtn.style.display = '';
+  }
+
+  // last 6 months history (including current), oldest first
+  const histList = document.getElementById('sav-history-list');
+  const rows = [];
+  for (let i=5; i>=0; i--) {
+    let y = yearIndex, m = monthIndex - i;
+    while (m < 0) { m += 12; y -= 1; }
+    const key = periodKey(y, m);
+    const monthData = hh.data[key] && hh.data[key][DB.session];
+    const saved = monthData ? totalSavings(monthData) : 0;
+    rows.push({ label: MONTHS[m] + ' ' + y, saved, isCurrent: (y===yearIndex && m===monthIndex) });
+  }
+  const maxSaved = Math.max(1, ...rows.map(r=>r.saved));
+  histList.innerHTML = rows.map(r => `
+    <div class="row">
+      <div class="row-info">
+        <div class="row-name">${r.label}${r.isCurrent?' (this month)':''}</div>
+        <div class="progress-bar" style="height:5px;margin-top:6px;background:var(--bg-deep)">
+          <div class="progress-fill" style="width:${Math.round(r.saved/maxSaved*100)}%;background:var(--mint)"></div>
+        </div>
+      </div>
+      <div class="row-amount num" style="color:var(--text)">${fmt(r.saved)}</div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   SAVINGS GOALS — multiple named goals (e.g. "Goa Trip", "Diwali").
+   Each goal's progress mirrors total net worth saved so far, capped
+   at its own target — money isn't physically split between goals,
+   so this is simply "how close am I" per goal, not a shared pool.
+   ============================================================ */
+function daysUntil(dateStr){
+  if (!dateStr) return null;
+  const target = new Date(dateStr + 'T00:00:00');
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  return Math.ceil((target - now) / 86400000);
+}
+
+function renderGoals(acc, netWorth){
+  const list = document.getElementById('goals-list');
+  if (!acc.goals.length) {
+    list.innerHTML = `<div class="empty-state"><div class="ic">🎯</div><div class="t">No savings goals yet. Add one for a trip, a gadget, or any event you're saving toward.</div></div>`;
+    return;
+  }
+  list.innerHTML = acc.goals.map(g => {
+    const pct = g.target > 0 ? Math.min(100, Math.round(netWorth / g.target * 100)) : 0;
+    const reached = g.target > 0 && netWorth >= g.target;
+    const overdue = !reached && g.targetDate && daysUntil(g.targetDate) < 0;
+    const barClass = reached ? 'progress-ok' : overdue ? 'progress-over' : 'progress-warn';
+    let dateNote = '';
+    if (g.targetDate) {
+      const days = daysUntil(g.targetDate);
+      if (reached) dateNote = 'Reached 🎉';
+      else if (days === null) dateNote = '';
+      else if (days < 0) dateNote = `${Math.abs(days)} day${Math.abs(days)===1?'':'s'} overdue`;
+      else if (days === 0) dateNote = 'Today is the day';
+      else {
+        const needed = g.target - netWorth;
+        const perDay = needed / days;
+        dateNote = `${days} day${days===1?'':'s'} left · need ${fmt(Math.max(0,Math.round(perDay)))}/day`;
+      }
+    }
+    return `
+      <div class="progress-wrap" style="margin-top:12px;">
+        <div class="progress-header">
+          <h2 style="display:flex;align-items:center;gap:6px;">${g.name}${reached?' ✅':''}</h2>
+          <div style="display:flex;gap:4px;">
+            <button class="icon-btn" onclick="openModal('goal','${g.id}')">✏️</button>
+            <button class="icon-btn" onclick="deleteGoal(${g.id})">🗑</button>
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill ${barClass}" style="width:${pct}%"></div>
+        </div>
+        <div class="progress-labels num">
+          <span>${fmt(Math.min(netWorth,g.target))} saved (${pct}%)</span>
+          <span>Goal ${fmt(g.target)}</span>
+        </div>
+        ${dateNote ? `<div style="font-size:11.5px;color:${overdue?'var(--coral)':'var(--text3)'};margin-top:4px;">${dateNote}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+async function saveGoal(editId){
+  const acc = myAccounts();
+  const name = document.getElementById('inp-goal-name').value.trim();
+  const target = parseFloat(document.getElementById('inp-goal-target').value) || 0;
+  const targetDate = document.getElementById('inp-goal-date').value || null;
+  if (!name || target <= 0) return showToast('Enter a name and target amount');
+
+  if (editId) {
+    const g = acc.goals.find(x=>String(x.id)===String(editId));
+    if (g) { g.name = name; g.target = target; g.targetDate = targetDate; }
+  } else {
+    acc.goals.push({ id: acc.nextGoalId++, name, target, targetDate });
+  }
+  await saveStore();
+  closeModal('modal-goal');
+  renderAll();
+  showToast('Goal saved ✓');
+}
+
+async function deleteGoal(id){
+  const acc = myAccounts();
+  acc.goals = acc.goals.filter(g=>String(g.id)!==String(id));
+  await saveStore();
+  renderAll();
+  showToast('Goal removed');
+}
+
+/* ============================================================
+   RENDER: TRANSACTIONS LOG
+   ============================================================ */
+let txnFilter = 'all';
+function setTxnFilter(kind){
+  txnFilter = kind;
+  document.querySelectorAll('.txn-filter-pill').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.txnFilter === kind);
+  });
+  renderTransactions();
+}
+
+const TXN_ICONS = { expense: '🧾', income: '💵', account: '🏦', investment: '📈' };
+const TXN_ACTION_LABEL = { added: 'Added', edited: 'Edited', deleted: 'Deleted', removed: 'Removed' };
+
+function txnTimeLabel(iso){
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const datePart = sameDay ? 'Today' : d.toLocaleDateString(undefined, { day:'numeric', month:'short' });
+  const timePart = d.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+  return datePart + ' · ' + timePart;
+}
+
+function renderTransactions(){
+  const d = myData();
+  const list = document.getElementById('transaction-list');
+  if (!document.querySelector('.txn-filter-pill.active')) {
+    const allBtn = document.querySelector('.txn-filter-pill[data-txn-filter="all"]');
+    if (allBtn) allBtn.classList.add('active');
+  }
+  const txns = (d.transactions || []).filter(t => txnFilter === 'all' || t.kind === txnFilter);
+  if (!txns.length) {
+    list.innerHTML = `<div class="empty-state"><div class="ic">📜</div><div class="t">No transactions logged yet this month. Every add, edit, or delete will show up here with a timestamp.</div></div>`;
+    return;
+  }
+  list.innerHTML = txns.map(t => {
+    const isNegative = t.kind === 'expense' && t.action !== 'deleted';
+    const color = t.action === 'deleted' || t.action === 'removed' ? 'var(--text3)' : (t.kind === 'income' ? 'var(--mint)' : 'var(--text)');
+    const sign = t.kind === 'income' && t.action !== 'deleted' ? '+' : (isNegative ? '-' : '');
+    return `
+      <div class="row">
+        <div class="row-icon">${TXN_ICONS[t.kind] || '•'}</div>
+        <div class="row-info">
+          <div class="row-name">${t.name}${t.shared ? ' <span class="tag" style="margin-left:4px;">Shared</span>' : ''}</div>
+          <div style="font-size:11.5px;color:var(--text3);margin-top:2px;">${TXN_ACTION_LABEL[t.action]||t.action||''} · ${txnTimeLabel(t.at)}${t.paidBy && DB.users[t.paidBy] ? ' · ' + DB.users[t.paidBy].name : ''}</div>
+        </div>
+        <div class="row-amount num" style="color:${color};text-decoration:${t.action==='deleted'||t.action==='removed'?'line-through':'none'}">${sign}${fmt(t.amount||0)}</div>
+      </div>`;
+  }).join('');
+}
+
+
+/* ============================================================
+   PRIVACY BOUNDARY
+   Only the household creator (memberIds[0]) or the member
+   themselves may access full per-line-item data. Everyone else
+   gets pre-aggregated totals only — the raw expense/income
+   arrays for other members are never pulled into this scope.
+   ============================================================ */
+function isHouseholdCreator(hh, userId){
+  return hh.memberIds[0] === userId;
+}
+
+function memberStatsFor(hh, mIdx, viewerId, targetUserId, yIdx){
+  const canSeeDetail = (viewerId === targetUserId) || isHouseholdCreator(hh, viewerId);
+  const d = monthDataFor(hh, mIdx, targetUserId, yIdx);
+  const stats = {
+    income: totalIncome(d),
+    expenses: totalExpenses(d),
+    savings: totalSavings(d)
+  };
+  if (canSeeDetail) {
+    stats.detail = d; // only attached when the viewer is permitted to see it
+  }
+  return stats;
+}
+
+/* ============================================================
+   RENDER: FAMILY (constellation + member cards)
+   ============================================================ */
+function renderFamily(){
+  const hh = currentHousehold();
+  const grid = document.getElementById('member-card-grid');
+  const constellation = document.getElementById('constellation');
+  const viewerId = DB.session;
+  const viewerIsCreator = isHouseholdCreator(hh, viewerId);
+
+  const members = hh.memberIds.map(uidKey => DB.users[uidKey]).filter(Boolean);
+  const memberStats = members.map(u => {
+    const stats = memberStatsFor(hh, monthIndex, viewerId, u.id, yearIndex);
+    return { user: u, ...stats, restricted: !stats.detail };
+  });
+
+  const familyTotal = memberStats.reduce((a,m)=>a + m.expenses + m.savings, 0);
+
+  grid.innerHTML = memberStats.map(m => `
+    <div class="member-card">
+      <div class="member-card-head">
+        <div class="avatar-dot" style="background:${MEMBER_COLORS[m.user.color]||'var(--mint)'};width:30px;height:30px;font-size:12px;">${(m.user.name||'?')[0].toUpperCase()}</div>
+        <div>
+          <div class="nm">${m.user.name}${m.user.id===DB.session?' (you)':''}</div>
+          <div class="role">${m.user.id === hh.memberIds[0] ? 'Household creator' : 'Member'}</div>
+        </div>
+      </div>
+      <div class="member-stat"><span>Income</span><b class="num" style="color:var(--mint)">${fmt(m.income)}</b></div>
+      <div class="member-stat"><span>Expenses</span><b class="num" style="color:var(--coral)">${fmt(m.expenses)}</b></div>
+      <div class="member-stat"><span>Savings</span><b class="num" style="color:var(--lav)">${fmt(m.savings)}</b></div>
+      ${m.restricted ? `<div style="font-size:10.5px;color:var(--text3);margin-top:8px;display:flex;align-items:center;gap:4px;">🔒 Totals only — line items are private</div>` : ''}
+    </div>
+  `).join('');
+
+  // constellation layout
+  const n = memberStats.length;
+  const radius = 38; // percent
+  let html = `<div class="const-center"><div class="v num">${fmt(familyTotal)}</div><div class="l">Household total</div></div>`;
+  memberStats.forEach((m, i) => {
+    const angle = (i / n) * 2 * Math.PI - Math.PI/2;
+    const x = 50 + radius * Math.cos(angle);
+    const y = 50 + radius * Math.sin(angle);
+    const amt = m.expenses + m.savings;
+    html += `
+      <div class="const-member" style="left:${x}%; top:${y}%;">
+        <div class="avatar-dot dot" style="background:${MEMBER_COLORS[m.user.color]||'var(--mint)'}">${(m.user.name||'?')[0].toUpperCase()}</div>
+        <div class="nm">${m.user.name.split(' ')[0]}</div>
+        <div class="amt num">${fmt(amt)}</div>
+      </div>`;
+  });
+  constellation.innerHTML = html;
+
+  document.getElementById('family-month-label').textContent = MONTHS[monthIndex];
+  renderPayerSummary();
+}
+
+/* ============================================================
+   WHO PAID WHAT + SETTLE UP (based on bills you've tagged
+   "shared" while logging your own expenses, split evenly
+   between you and whichever member you marked as payer)
+   ============================================================ */
+function renderPayerSummary(){
+  const d = myData();
+  const shared = allExpenses(d).filter(e=>e.shared);
+  const summaryList = document.getElementById('payer-summary-list');
+  const billList = document.getElementById('shared-bill-list');
+  const settleContent = document.getElementById('settle-up-content');
+
+  if (!shared.length) {
+    summaryList.innerHTML = `<div class="empty-state"><div class="ic">🤝</div><div class="t">No shared bills logged this month. Tick "Shared household bill" when adding an expense to track it here.</div></div>`;
+    billList.innerHTML = '';
+    settleContent.innerHTML = `<div style="font-size:13px;color:var(--text3);">Nothing to settle yet.</div>`;
+    return;
+  }
+
+  // total paid by each payer, across this month's shared bills
+  const totals = {};
+  shared.forEach(e => {
+    const who = e.paidBy || DB.session;
+    totals[who] = (totals[who] || 0) + e.amount;
+  });
+  const payerIds = Object.keys(totals);
+  const grandTotal = Object.values(totals).reduce((a,b)=>a+b,0);
+
+  summaryList.innerHTML = payerIds.map(pid => {
+    const u = DB.users[pid];
+    const name = u ? u.name : 'Unknown';
+    const pct = grandTotal ? Math.round(totals[pid]/grandTotal*100) : 0;
+    return `
+      <div class="row">
+        <div class="row-icon"><span class="avatar-dot dot" style="background:${u?MEMBER_COLORS[u.color]||'var(--mint)':'var(--mint)'};width:30px;height:30px;font-size:12px;">${name[0].toUpperCase()}</span></div>
+        <div class="row-info">
+          <div class="row-name">${name}${pid===DB.session?' (you)':''}</div>
+          <div class="progress-bar" style="height:5px;margin-top:6px;background:var(--bg-deep)">
+            <div class="progress-fill" style="width:${pct}%;background:var(--lav)"></div>
+          </div>
+        </div>
+        <div class="row-amount num" style="color:var(--text)">${fmt(totals[pid])}</div>
+      </div>`;
+  }).join('');
+
+  billList.innerHTML = shared.map(e => {
+    const u = DB.users[e.paidBy];
+    return `
+      <div class="row">
+        <div class="row-icon">${ICONS[e.cat]||'💰'}</div>
+        <div class="row-info">
+          <div class="row-name">${e.name}</div>
+          <div style="font-size:11.5px;color:var(--text3);">Paid by ${u?u.name:'Unknown'}</div>
+        </div>
+        <div class="row-amount num" style="color:var(--text)">${fmt(e.amount)}</div>
+      </div>`;
+  }).join('');
+
+  // settle-up: assumes an even split between exactly two payers (the common case for a couple).
+  // With more than two payers shown, we still show each person's fair share vs what they paid.
+  const fairShare = grandTotal / payerIds.length;
+  const balances = payerIds.map(pid => ({ pid, name: DB.users[pid]?DB.users[pid].name:'Unknown', diff: totals[pid] - fairShare }));
+  const owed = balances.filter(b=>b.diff < -1).sort((a,b)=>a.diff-b.diff);
+  const owes = balances.filter(b=>b.diff > 1).sort((a,b)=>b.diff-a.diff);
+
+  if (!owed.length || !owes.length) {
+    settleContent.innerHTML = `<div style="font-size:13px;color:var(--mint-text);">✓ Everyone's even — no one owes anything for shared bills this month.</div>`;
+  } else {
+    // simple greedy match between who-overpaid and who-underpaid
+    const rows = [];
+    let oi = 0, wi = 0;
+    const owedPool = owed.map(o=>({...o, remaining: -o.diff}));
+    const owesPool = owes.map(o=>({...o, remaining: o.diff}));
+    while (oi < owedPool.length && wi < owesPool.length) {
+      const give = owesPool[wi], get = owedPool[oi];
+      const amt = Math.min(give.remaining, get.remaining);
+      if (amt > 1) rows.push(`<b>${give.name}</b> owes <b>${get.name}</b> <span class="num">${fmt(amt)}</span>`);
+      give.remaining -= amt; get.remaining -= amt;
+      if (give.remaining <= 1) wi++;
+      if (get.remaining <= 1) oi++;
+    }
+    settleContent.innerHTML = rows.map(r=>`<div style="font-size:14px;margin-bottom:8px;">${r}</div>`).join('');
+  }
+}
+
+/* ============================================================
+   RENDER: EMERGENCY FUND
+   ============================================================ */
+async function updateEmergency(){
+  const d = myData();
+  const months = parseInt(document.getElementById('emMonthsSlider').value);
+  const current = parseInt(document.getElementById('emCurrentSlider').value);
+  const timeline = parseInt(document.getElementById('emTimelineSlider').value);
+  d.emergency = { months, current, timeline };
+  saveStore(); // fire-and-forget
+
+  const monthly = totalExpenses(d) + totalSavings(d);
+  const target = monthly * months;
+  const gap = Math.max(0, target - current);
+  const needed = gap > 0 ? Math.ceil(gap/timeline) : 0;
+  const income = totalIncome(d);
+  const freeAfterExp = income - monthly;
+  const feasible = needed <= freeAfterExp;
+
+  document.getElementById('em-months-val').textContent = months;
+  document.getElementById('em-months-display').textContent = months+' months';
+  document.getElementById('em-current-display').textContent = fmt(current);
+  document.getElementById('em-timeline-display').textContent = timeline+' months';
+  document.getElementById('em-monthly').textContent = fmt(monthly);
+  document.getElementById('em-target').textContent = fmt(target);
+  document.getElementById('em-target-note').textContent = months+'× monthly';
+  document.getElementById('em-current-saved').textContent = fmt(current);
+  document.getElementById('em-gap').textContent = fmt(gap);
+  document.getElementById('em-monthly-needed').textContent = fmt(needed);
+
+  const monthsToFill = needed > 0 ? Math.ceil(gap/needed) : 0;
+  document.getElementById('em-months-to-fill').textContent = gap>0 ? `${monthsToFill} months to fill` : 'Goal reached! 🎉';
+
+  const feasibility = document.getElementById('em-feasibility');
+  if (needed===0) feasibility.textContent = '🎉 Emergency fund fully funded!';
+  else if (feasible) feasibility.textContent = `✅ Feasible — you have ${fmt(freeAfterExp)} available after expenses`;
+  else feasibility.textContent = `⚠️ Tight — only ${fmt(freeAfterExp)} available; consider a longer timeline`;
+
+  const insight = document.getElementById('em-insight');
+  if (current===0) {
+    insight.className='insight-box insight-danger';
+    insight.textContent = `🚨 No emergency fund detected. Start with a goal of ${fmt(monthly*3)} (3 months) and build to ${fmt(target)}.`;
+  } else if (current < target*0.5) {
+    insight.className='insight-box insight-warn';
+    insight.textContent = `📈 Emergency fund is ${Math.round(current/Math.max(target,1)*100)}% funded. You're ${fmt(gap)} away from your ${months}-month target.`;
+  } else if (current < target) {
+    insight.className='insight-box insight-warn';
+    insight.textContent = `🟡 Almost there! ${fmt(gap)} more to reach your ${months}-month emergency fund. Keep going!`;
+  } else {
+    insight.className='insight-box insight-ok';
+    insight.textContent = `✅ Emergency fund fully funded at ${fmt(current)}! Consider investing the surplus.`;
+  }
+}
+
+function loadEmergencyInputs(){
+  const d = myData();
+  document.getElementById('emMonthsSlider').value = d.emergency.months;
+  document.getElementById('emCurrentSlider').value = d.emergency.current;
+  document.getElementById('emTimelineSlider').value = d.emergency.timeline;
+}
+
+/* ============================================================
+   MASTER RENDER — only renders the panel currently visible,
+   instead of rebuilding all six tabs' DOM on every edit.
+   ============================================================ */
+const TAB_RENDERERS = {
+  overview: renderOverview,
+  expenses: renderExpenses,
+  income: renderIncome,
+  bank: renderBank,
+  investments: renderInvestments,
+  loans: renderLoans,
+  savings: renderSavings,
+  family: renderFamily,
+  transactions: renderTransactions,
+  emergency: () => { loadEmergencyInputs(); updateEmergency(); }
+};
+
+function activeTabName(){
+  const el = document.querySelector('.tab-panel.active');
+  return el ? el.id.replace('tab-','') : 'overview';
+}
+
+function renderAll(){
+  if (!DB.session) return;
+  const fn = TAB_RENDERERS[activeTabName()];
+  if (fn) fn();
+}
+
+function renderEverything(){
+  if (!DB.session) return;
+  Object.values(TAB_RENDERERS).forEach(fn => fn());
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+function openModal(kind, id, defaultType){
+  let html = '';
+  if (kind === 'expense') {
+    const d = myData();
+    const editing = id ? (d.expensesFixed.find(e=>String(e.id)===String(id)) || d.expensesDaily.find(e=>String(e.id)===String(id))) : null;
+    const typeVal = editing ? editing.type : (defaultType || 'fixed');
+    const tpl = editing && editing.recurringId ? myRecurring().templates.find(t=>t.id===editing.recurringId) : null;
+    const isRecurring = !!tpl;
+    const hasEnd = tpl && tpl.endPeriod;
+    html = `
+      <div class="modal-overlay open" id="modal-expense" onclick="closeModalOnBg(event,'modal-expense')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>${editing ? 'Edit expense' : (typeVal==='fixed' ? 'Add fixed bill' : 'Add spending entry')}</h2>
+          <div class="form-group"><label>Name</label><input type="text" id="exp-name" placeholder="e.g. SBI EMI" value="${editing?editing.name:''}"></div>
+          <div class="form-group"><label>Amount (₹)</label><input type="number" id="exp-amount" placeholder="0" value="${editing?editing.amount:''}"></div>
+          <div class="form-group"><label>Category</label>
+            <select id="exp-cat">
+              ${Object.keys(LABELS).map(c=>`<option value="${c}" ${editing&&editing.cat===c?'selected':''}>${LABELS[c]}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group"><label>Type</label>
+            <select id="exp-type" onchange="toggleRecurringFields()">
+              <option value="fixed" ${typeVal==='fixed'?'selected':''}>Fixed bill (same every month)</option>
+              <option value="variable" ${typeVal==='variable'?'selected':''}>Daily / variable spending</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Paid by</label>
+            <select id="exp-paidby">
+              ${currentHousehold().memberIds.map(m=>`<option value="${m}" ${editing&&editing.paidBy===m||(!editing&&m===DB.session)?'selected':''}>${DB.users[m].name}${m===DB.session?' (you)':''}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="exp-shared" style="width:18px;height:18px;" ${editing&&editing.shared?'checked':''}>
+            <label style="margin:0;" for="exp-shared">Shared household bill (counts toward who-owes-whom)</label>
+          </div>
+          <div id="exp-recurring-fields" style="display:${typeVal==='fixed'?'':'none'};">
+            <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="exp-recurring" style="width:18px;height:18px;" ${(!editing || isRecurring) ? 'checked' : ''} onchange="toggleRecurringEnd()">
+              <label style="margin:0;" for="exp-recurring">Repeat every month</label>
+            </div>
+            <div id="exp-recurring-end-wrap" class="form-group" style="display:${(!editing||isRecurring)?'':'none'};">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="exp-has-end" style="width:18px;height:18px;" ${hasEnd?'checked':''} onchange="document.getElementById('exp-end-month-wrap').style.display=this.checked?'':'none'">
+                Stop repeating after a certain month
+              </label>
+              <div id="exp-end-month-wrap" style="display:${hasEnd?'':'none'};margin-top:8px;">
+                <input type="month" id="exp-end-month" value="${hasEnd ? (tpl.endPeriod.y+'-'+String(tpl.endPeriod.m+1).padStart(2,'0')) : ''}">
+              </div>
+            </div>
+          </div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-expense')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveExpense('${editing?editing.id:''}')">Save</button>
+          </div>
+        </div>
+      </div>`;
+  } else if (kind === 'income') {
+    const d = myData();
+    const editing = id ? d.income.find(i=>String(i.id)===String(id)) : null;
+    html = `
+      <div class="modal-overlay open" id="modal-income" onclick="closeModalOnBg(event,'modal-income')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>${editing ? 'Edit income' : 'Add income'}</h2>
+          <div class="form-group"><label>Source</label><input type="text" id="inc-name" placeholder="e.g. Salary" value="${editing?editing.name:''}"></div>
+          <div class="form-group"><label>Amount (₹)</label><input type="number" id="inc-amount" placeholder="0" value="${editing?editing.amount:''}"></div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-income')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveIncome('${editing?editing.id:''}')">Save</button>
+          </div>
+        </div>
+      </div>`;
+  } else if (kind === 'bank') {
+    const acc = myAccounts();
+    const editing = id ? acc.banks.find(b=>String(b.id)===String(id)) : null;
+    html = `
+      <div class="modal-overlay open" id="modal-bank" onclick="closeModalOnBg(event,'modal-bank')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>${editing ? 'Edit account' : 'Add a bank account'}</h2>
+          <div class="form-group"><label>Bank / account name</label><input type="text" id="inp-bank-name" placeholder="e.g. HDFC Savings" value="${editing ? editing.name : ''}"></div>
+          <div class="form-group"><label>Last 4 digits (optional)</label><input type="text" id="inp-bank-last4" maxlength="4" placeholder="1234" value="${editing && editing.last4 ? editing.last4 : ''}"></div>
+          <div class="form-group"><label>${editing ? 'Current balance' : 'Current real balance'}</label><input type="number" id="inp-bank-balance" placeholder="0" value="${editing ? (editing.balance||0) : ''}"></div>
+          <div style="font-size:11.5px;color:var(--text3);margin-top:-6px;margin-bottom:10px;">This is your real balance as of now. From here, the app keeps it updated automatically each month using the income, expenses, and savings you log — it won't auto-fetch from your bank.</div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-bank')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveBankAccount('${editing ? editing.id : ''}')">Save</button>
+          </div>
+        </div>
+      </div>`;
+  } else if (kind === 'investment') {
+    const acc = myAccounts();
+    const editing = id ? acc.investments.find(i=>String(i.id)===String(id)) : null;
+    html = `
+      <div class="modal-overlay open" id="modal-investment" onclick="closeModalOnBg(event,'modal-investment')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>${editing ? 'Edit holding' : 'Add a holding'}</h2>
+          <div class="form-group"><label>Type</label>
+            <select id="inp-inv-kind">
+              <option value="stock" ${editing && editing.kind==='stock' ? 'selected':''}>Stock</option>
+              <option value="mf" ${editing && editing.kind==='mf' ? 'selected':''}>Mutual fund</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Name</label><input type="text" id="inp-inv-name" placeholder="e.g. HDFC Mid-Cap Fund" value="${editing ? editing.name : ''}"></div>
+          <div class="form-group"><label>Amount invested (cost basis)</label><input type="number" id="inp-inv-invested" placeholder="0" value="${editing ? (editing.invested||'') : ''}"></div>
+          <div class="form-group"><label>Current value</label><input type="number" id="inp-inv-current" placeholder="0" value="${editing ? (editing.currentValue||'') : ''}"></div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-investment')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveInvestment('${editing ? editing.id : ''}')">Save</button>
+          </div>
+        </div>
+      </div>`;
+  } else if (kind === 'loan') {
+    const acc = myAccounts();
+    const editing = id ? acc.loans.find(l=>String(l.id)===String(id)) : null;
+    const direction = editing ? editing.direction : (defaultType || 'owe');
+    const emiTemplates = myRecurring().templates.filter(t => t.cat === 'emi');
+    html = `
+      <div class="modal-overlay open" id="modal-loan" onclick="closeModalOnBg(event,'modal-loan')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>${editing ? 'Edit loan' : (direction === 'owe' ? 'Add a loan you owe' : 'Add money owed to you')}</h2>
+          <div class="form-group"><label>Direction</label>
+            <select id="inp-loan-direction" onchange="document.getElementById('loan-link-group').style.display = this.value==='owe' ? '' : 'none';">
+              <option value="owe" ${direction==='owe'?'selected':''}>I owe this</option>
+              <option value="owed" ${direction==='owed'?'selected':''}>Someone owes me this</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Name</label><input type="text" id="inp-loan-name" placeholder="e.g. Home loan, Personal loan, Loan to Raj" value="${editing ? editing.name : ''}"></div>
+          <div class="form-group"><label>Original amount (optional)</label><input type="number" id="inp-loan-principal" placeholder="0" value="${editing ? (editing.principal||'') : ''}"></div>
+          <div class="form-group"><label>Outstanding balance now</label><input type="number" id="inp-loan-balance" placeholder="0" value="${editing ? (editing.balance||'') : ''}"></div>
+          <div class="form-group" id="loan-link-group" style="display:${direction==='owe'?'':'none'};">
+            <label>Link to a recurring EMI (optional)</label>
+            <select id="inp-loan-link">
+              <option value="">Don't link — I'll update this by hand</option>
+              ${emiTemplates.map(t=>`<option value="${t.id}" ${editing && editing.linkedExpenseId===t.id ? 'selected':''}>${t.name} (${fmt(t.amount)}/month)</option>`).join('')}
+            </select>
+            <div style="font-size:11.5px;color:var(--text3);margin-top:6px;">If linked, this loan's balance automatically goes down by the EMI amount each month you pay it — no manual updating needed.</div>
+          </div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-loan')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveLoan('${editing ? editing.id : ''}')">Save</button>
+          </div>
+        </div>
+      </div>`;
+  } else if (kind === 'goal') {
+    const acc = myAccounts();
+    const editing = id ? acc.goals.find(g=>String(g.id)===String(id)) : null;
+    html = `
+      <div class="modal-overlay open" id="modal-goal" onclick="closeModalOnBg(event,'modal-goal')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>${editing ? 'Edit goal' : 'Add a savings goal'}</h2>
+          <div class="form-group"><label>What's it for?</label><input type="text" id="inp-goal-name" placeholder="e.g. Goa Trip, Diwali, New laptop" value="${editing ? editing.name : ''}"></div>
+          <div class="form-group"><label>Target amount</label><input type="number" id="inp-goal-target" placeholder="0" value="${editing ? editing.target : ''}"></div>
+          <div class="form-group"><label>Target date (optional)</label><input type="date" id="inp-goal-date" value="${editing && editing.targetDate ? editing.targetDate : ''}"></div>
+          <div style="font-size:11.5px;color:var(--text3);margin-top:-6px;margin-bottom:10px;">Progress tracks your total bank + investment balance against this target — it doesn't set money aside separately for each goal.</div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-goal')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveGoal('${editing ? editing.id : ''}')">Save</button>
+          </div>
+        </div>
+      </div>`;
+  } else if (kind === 'editCarry') {
+    const acc = myAccounts();
+    const lc = acc.lastCarryForward;
+    const label = lc ? (MONTHS[lc.fromPeriod.m] + ' ' + lc.fromPeriod.y) : '';
+    html = `
+      <div class="modal-overlay open" id="modal-editCarry" onclick="closeModalOnBg(event,'modal-editCarry')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>Edit carried-forward amount</h2>
+          <div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;">This corrects how much was carried into this month from ${label}. The difference between the old and new amount is applied to your bank balance right away — nothing else changes.</div>
+          <div class="form-group"><label>Correct amount</label><input type="number" id="inp-carry-amount" placeholder="0" value="${lc?lc.amount:0}"></div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-editCarry')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="editCarryForward(parseFloat(document.getElementById('inp-carry-amount').value)||0)">Save</button>
+          </div>
+        </div>
+      </div>`;
+  } else if (kind === 'settings') {
+    const user = currentUser();
+    const hh = currentHousehold();
+    html = `
+      <div class="modal-overlay open" id="modal-settings" onclick="closeModalOnBg(event,'modal-settings')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>Settings</h2>
+          <div class="form-group"><label>Your name</label><input type="text" id="set-name" value="${user.name}"></div>
+          <div class="form-group"><label>Your color</label>
+            <div class="pill-select" id="set-color-pick">
+              ${Object.keys(MEMBER_COLORS).map(c=>`<div class="pill-opt ${user.color===c?'sel':''}" data-color="${c}" style="background:${MEMBER_COLORS[c]};width:34px;height:34px;border-radius:50%;padding:0;" onclick="pickSettingsColor('${c}')"></div>`).join('')}
+            </div>
+          </div>
+          <div class="form-group"><label>Household</label><input type="text" value="${hh.name}" disabled style="opacity:.6"></div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-settings')">Close</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveSettings()">Save</button>
+          </div>
+          <div class="auth-foot" style="margin-top:16px;"><a onclick="signOut()">Sign out</a></div>
+        </div>
+      </div>`;
+  }
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+function pickSettingsColor(c){
+  document.querySelectorAll('#set-color-pick .pill-opt').forEach(p=>p.classList.remove('sel'));
+  document.querySelector(`#set-color-pick .pill-opt[data-color="${c}"]`).classList.add('sel');
+}
+
+async function saveSettings(){
+  const name = document.getElementById('set-name').value.trim();
+  const color = document.querySelector('#set-color-pick .pill-opt.sel').dataset.color;
+  if (!name) return showToast('Name cannot be empty');
+  currentUser().name = name;
+  currentUser().color = color;
+  showToast('Saving…');
+  await saveStore();
+  closeModal('modal-settings');
+  document.getElementById('topbar-name').textContent = name;
+  document.getElementById('me-avatar').textContent = name[0].toUpperCase();
+  document.getElementById('me-avatar').style.background = MEMBER_COLORS[color] || 'var(--mint)';
+  renderEverything();
+  showToast('Settings saved ✓');
+}
+
+function signOut(){
+  DB.session = null;
+  DB.users = {};
+  DB.households = {};
+  saveSession(null);
+  goTo('welcome');
+}
+
+function closeModal(id){
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+function closeModalOnBg(e, id){
+  closeModal(id);
+}
+
+/* Promise-based 2-choice confirm dialog (returns true for the "forward" choice,
+   false for the "just this" choice). Used for recurring-bill edit/delete prompts. */
+function confirmDialog(title, body, choiceA, choiceB){
+  return new Promise(resolve => {
+    const html = `
+      <div class="modal-overlay open" id="modal-confirm-dialog">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>${title}</h2>
+          <div style="font-size:13px;color:var(--text3);margin-bottom:14px;">${body}</div>
+          <div class="modal-btns" style="flex-direction:column;gap:8px;">
+            <button class="btn btn-secondary btn-block" id="confirm-choice-a">${choiceA}</button>
+            <button class="btn btn-primary btn-block" id="confirm-choice-b">${choiceB}</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('modal-root').insertAdjacentHTML('beforeend', html);
+    const cleanup = (result) => { closeModal('modal-confirm-dialog'); resolve(result); };
+    document.getElementById('confirm-choice-a').onclick = () => cleanup(false);
+    document.getElementById('confirm-choice-b').onclick = () => cleanup(true);
+  });
+}
+
+function toggleRecurringFields(){
+  const isFixed = document.getElementById('exp-type').value === 'fixed';
+  document.getElementById('exp-recurring-fields').style.display = isFixed ? '' : 'none';
+}
+function toggleRecurringEnd(){
+  document.getElementById('exp-recurring-end-wrap').style.display = document.getElementById('exp-recurring').checked ? '' : 'none';
+}
+
+function parseEndMonthInput(){
+  const v = document.getElementById('exp-has-end').checked ? document.getElementById('exp-end-month').value : '';
+  if (!v) return null;
+  const [y, m] = v.split('-').map(Number);
+  return { y, m: m-1 };
+}
+
+async function saveExpense(editId){
+  const name = document.getElementById('exp-name').value.trim();
+  const amount = parseFloat(document.getElementById('exp-amount').value);
+  const cat = document.getElementById('exp-cat').value;
+  const type = document.getElementById('exp-type').value;
+  const paidBy = document.getElementById('exp-paidby').value;
+  const shared = document.getElementById('exp-shared').checked;
+  const wantsRecurring = type === 'fixed' && document.getElementById('exp-recurring').checked;
+  const endPeriod = type === 'fixed' ? parseEndMonthInput() : null;
+  if (!name || isNaN(amount)) return showToast('Fill in name and amount');
+  const d = myData();
+  const r = myRecurring();
+
+  if (editId) {
+    let existing = d.expensesFixed.find(x=>String(x.id)===String(editId));
+    const fromFixed = !!existing;
+    if (!existing) existing = d.expensesDaily.find(x=>String(x.id)===String(editId));
+    const oldRecurringId = existing.recurringId;
+
+    // If this row is tied to a recurring template and there's more than just this
+    // month affected, ask whether the change should apply going forward too.
+    let applyForward = false;
+    if (oldRecurringId) {
+      applyForward = await confirmDialog('Apply this change to future months too?', 'This bill repeats. You can update just this month, or this and every month after it.', 'Just this month', 'This & future months');
+    }
+
+    if (fromFixed) d.expensesFixed = d.expensesFixed.filter(x=>String(x.id)!==String(editId));
+    else d.expensesDaily = d.expensesDaily.filter(x=>String(x.id)!==String(editId));
+    Object.assign(existing, { name, amount, cat, type, paidBy, shared });
+
+    if (oldRecurringId && applyForward) {
+      // update the template itself so future months pick up the new values
+      const tpl = r.templates.find(t=>t.id===oldRecurringId);
+      if (tpl) { tpl.name=name; tpl.amount=amount; tpl.cat=cat; tpl.paidBy=paidBy; tpl.shared=shared; tpl.endPeriod = endPeriod; }
+      existing.recurringId = oldRecurringId;
+    } else if (oldRecurringId && !applyForward) {
+      // detach this month's copy from the template so future months keep the old template values
+      delete existing.recurringId;
+    } else if (!oldRecurringId && wantsRecurring && type==='fixed') {
+      // turning a one-off bill into a recurring one, starting from this month
+      const tpl = { id: r.nextId++, name, amount, cat, paidBy, shared, startPeriod: { y: yearIndex, m: monthIndex }, endPeriod };
+      r.templates.push(tpl);
+      existing.recurringId = tpl.id;
+    }
+    (type === 'fixed' ? d.expensesFixed : d.expensesDaily).push(existing);
+    logTransaction(d, { kind: 'expense', action: 'edited', name, amount, cat, paidBy, shared });
+  } else {
+    const entry = { id: d.nextExpId++, name, amount, cat, type, paidBy, shared };
+    if (wantsRecurring) {
+      const tpl = { id: r.nextId++, name, amount, cat, paidBy, shared, startPeriod: { y: yearIndex, m: monthIndex }, endPeriod };
+      r.templates.push(tpl);
+      entry.recurringId = tpl.id;
+    }
+    (type === 'fixed' ? d.expensesFixed : d.expensesDaily).push(entry);
+    logTransaction(d, { kind: 'expense', action: 'added', name, amount, cat, paidBy, shared });
+  }
+  showToast('Saving…');
+  await saveStore();
+  closeModal('modal-expense');
+  renderAll();
+  showToast('Expense saved ✓');
+}
+
+async function saveIncome(editId){
+  const name = document.getElementById('inc-name').value.trim();
+  const amount = parseFloat(document.getElementById('inc-amount').value);
+  if (!name || isNaN(amount)) return showToast('Fill in source and amount');
+  const d = myData();
+  if (editId) {
+    const i = d.income.find(x=>String(x.id)===String(editId));
+    Object.assign(i, { name, amount });
+    logTransaction(d, { kind: 'income', action: 'edited', name, amount });
+  } else {
+    d.income.push({ id: d.nextIncId++, name, amount, paidBy: DB.session });
+    logTransaction(d, { kind: 'income', action: 'added', name, amount });
+  }
+  showToast('Saving…');
+  await saveStore();
+  closeModal('modal-income');
+  renderAll();
+  showToast('Income saved ✓');
+}
+
+async function saveBankAccount(editId){
+  const acc = myAccounts();
+  const name = document.getElementById('inp-bank-name').value.trim();
+  const last4 = document.getElementById('inp-bank-last4').value.trim();
+  const balance = parseFloat(document.getElementById('inp-bank-balance').value) || 0;
+  if (!name) return showToast('Please enter an account name');
+
+  if (editId) {
+    const b = acc.banks.find(x=>String(x.id)===String(editId));
+    if (b) {
+      b.name = name;
+      b.last4 = last4;
+      b.balance = balance;
+    }
+    logTransaction(myData(), { kind: 'account', action: 'edited', name, amount: balance });
+  } else {
+    const preset = BANK_PRESETS[acc.banks.length % BANK_PRESETS.length];
+    acc.banks.push({
+      id: uid(), name, icon: preset.icon, color: preset.color,
+      last4, balance
+    });
+    logTransaction(myData(), { kind: 'account', action: 'added', name, amount: balance });
+  }
+  showToast('Saving…');
+  await saveStore();
+  closeModal('modal-bank');
+  renderAll();
+  showToast('Account saved ✓');
+}
+
+async function saveInvestment(editId){
+  const acc = myAccounts();
+  const kind = document.getElementById('inp-inv-kind').value;
+  const name = document.getElementById('inp-inv-name').value.trim();
+  const invested = parseFloat(document.getElementById('inp-inv-invested').value) || 0;
+  const currentValue = parseFloat(document.getElementById('inp-inv-current').value) || 0;
+  if (!name) return showToast('Please enter a name');
+
+  if (editId) {
+    const i = acc.investments.find(x=>String(x.id)===String(editId));
+    if (i) { i.kind = kind; i.name = name; i.invested = invested; i.currentValue = currentValue; }
+    logTransaction(myData(), { kind: 'investment', action: 'edited', name, amount: currentValue });
+  } else {
+    acc.investments.push({ id: acc.nextInvId++, kind, name, invested, currentValue });
+    logTransaction(myData(), { kind: 'investment', action: 'added', name, amount: currentValue });
+  }
+  showToast('Saving…');
+  await saveStore();
+  closeModal('modal-investment');
+  renderAll();
+  showToast('Holding saved ✓');
+}
+
+
+
+function quickAdd(){
+  openModal('expense');
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+let toastTimer = null;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ============================================================
+   BOOT — restore session from localStorage, reload data from cloud
+   ============================================================ */
+(async function boot(){
+  const savedSession = loadSession();
+  if (!savedSession) { goTo('welcome'); return; }
+
+  const overlay = document.getElementById('boot-overlay');
+  if (overlay) overlay.style.display = 'flex';
+
+  try {
+    const { data: user, error } = await supa.from('users').select('*').eq('id', savedSession).single();
+    if (error || !user) {
+      saveSession(null);
+      if (overlay) overlay.style.display = 'none';
+      goTo('welcome');
+      return;
+    }
+
+    DB.users[user.id] = { id: user.id, name: user.name, pinHash: user.pin_hash, color: user.color, householdId: user.household_id };
+    DB.session = user.id;
+
+    if (user.household_id) {
+      await refreshFromCloud();
+      if (overlay) overlay.style.display = 'none';
+      enterApp();
+    } else {
+      if (overlay) overlay.style.display = 'none';
+      goTo('household');
+    }
+  } catch(e) {
+    if (overlay) overlay.style.display = 'none';
+    goTo('welcome');
+  }
+})();
+
+</script>
+</body>
+</html>
+  --sand-text: #F0E0B8;
+
+  --sky: #A8CCE8;
+  --sky-bg: #1A2733;
+  --sky-text: #BFDDF0;
+
+  --rose: #E8B4C8;
+  --rose-bg: #2E1F28;
+
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-lg: 24px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --font-display: 'Lexend', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 800px 500px at 15% -10%, rgba(159,216,184,0.06), transparent),
+    radial-gradient(ellipse 700px 500px at 100% 0%, rgba(195,184,232,0.05), transparent);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.5;
+}
+button { font-family: inherit; }
+input, select { font-family: inherit; }
+.num { font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; }
+
+h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ===== Screen management ===== */
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: block; }
+
+/* ===== AUTH SCREENS ===== */
+.auth-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+.auth-card::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(159,216,184,0.12), transparent 70%);
+}
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.brand-icon {
+  width: 38px; height: 38px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, var(--mint), var(--sky));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.brand-name { font-family: var(--font-display); font-weight: 700; font-size: 19px; letter-spacing: -0.02em; }
+.brand-tag { font-size: 12px; color: var(--text3); margin-top: -2px; }
+
+.auth-title { font-size: 23px; font-weight: 700; margin-bottom: 6px; }
+.auth-sub { font-size: 14px; color: var(--text2); margin-bottom: 26px; line-height: 1.55; }
+
+.seg-toggle { display: flex; background: var(--surface2); border-radius: 11px; padding: 4px; margin-bottom: 20px; border: 0.5px solid var(--border); }
+.seg-btn { flex: 1; padding: 9px; text-align: center; font-size: 13px; font-weight: 600; border-radius: 8px; border: none; background: none; color: var(--text2); cursor: pointer; transition: all .15s; }
+.seg-btn.active { background: var(--surface3); color: var(--text); }
+
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 12.5px; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+.field input, .field select {
+  width: 100%; padding: 13px 14px;
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  background: var(--bg-deep);
+  color: var(--text);
+}
+.field input::placeholder { color: var(--text3); }
+.field input:focus, .field select:focus { outline: 2px solid var(--mint); outline-offset: 1px; border-color: transparent; }
+.phone-row { display: flex; gap: 8px; }
+.phone-row .cc { width: 78px; flex-shrink: 0; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; padding: 13px 18px; transition: transform .1s, opacity .15s; }
+.btn:active { transform: scale(0.98); }
+.btn-block { width: 100%; }
+.btn-primary { background: linear-gradient(135deg, var(--mint), #8FCBAE); color: #0e1f15; }
+.btn-primary:hover { opacity: 0.92; }
+.btn-ghost { background: var(--surface2); color: var(--text); border: 0.5px solid var(--border2); }
+.btn-text { background: none; color: var(--mint); font-size: 13.5px; padding: 8px; font-weight: 600; }
+.btn-sm { padding: 8px 12px; font-size: 13px; border-radius: 9px; }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+.otp-row { display: flex; gap: 8px; margin-bottom: 18px; }
+.otp-box { width: 100%; aspect-ratio: 1; text-align: center; font-size: 20px; font-weight: 700; padding: 0; }
+
+.auth-foot { text-align: center; margin-top: 18px; font-size: 13px; color: var(--text3); }
+.auth-foot a { color: var(--mint); text-decoration: none; font-weight: 600; cursor: pointer; }
+
+.divider-or { display: flex; align-items: center; gap: 10px; margin: 18px 0; color: var(--text3); font-size: 12px; }
+.divider-or::before, .divider-or::after { content: ''; flex: 1; height: 0.5px; background: var(--border2); }
+
+.mock-banner {
+  font-size: 11.5px; color: var(--sand-text); background: var(--sand-bg);
+  border-radius: 9px; padding: 8px 11px; margin-bottom: 20px;
+  display: flex; gap: 8px; align-items: flex-start; line-height: 1.45;
+  border: 0.5px solid rgba(232,212,168,0.15);
+}
+
+/* family join card */
+.family-pill-list { display: flex; flex-direction: column; gap: 10px; margin: 18px 0; }
+.family-pill { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface2); border-radius: var(--radius-sm); border: 0.5px solid var(--border); cursor: pointer; }
+.family-pill:hover { border-color: var(--border2); }
+.avatar-dot { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; color: #15151a; }
+
+/* ===== APP SHELL ===== */
+.app { max-width: 760px; margin: 0 auto; padding: 16px 16px 90px; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px; padding: 14px 18px;
+  background: var(--surface); border-radius: var(--radius);
+  border: 0.5px solid var(--border);
+}
+.topbar-left { display: flex; align-items: center; gap: 11px; }
+.topbar-id { display: flex; flex-direction: column; }
+.topbar-name { font-family: var(--font-display); font-weight: 600; font-size: 15.5px; }
+.topbar-house { font-size: 11.5px; color: var(--text3); }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.icon-pill { width: 36px; height: 36px; border-radius: 10px; background: var(--surface2); border: 0.5px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px; color: var(--text2); }
+.icon-pill:active { background: var(--surface3); }
+.month-pill { font-size: 12.5px; color: var(--text2); background: var(--surface2); padding: 8px 13px; border-radius: 20px; border: 0.5px solid var(--border); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.month-pill select { background: none; border: none; color: var(--text); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+
+.avatar-stack { display: flex; }
+.avatar-stack .avatar-dot { width: 30px; height: 30px; font-size: 12px; border: 2px solid var(--surface); margin-left: -10px; }
+.avatar-stack .avatar-dot:first-child { margin-left: 0; }
+
+/* tabs */
+.tabs { display: flex; gap: 5px; margin-bottom: 18px; background: var(--surface); padding: 5px; border-radius: var(--radius); border: 0.5px solid var(--border); overflow-x: auto; }
+.tab { flex: 1; min-width: max-content; padding: 9px 14px; text-align: center; font-size: 13px; font-weight: 600; border-radius: 11px; cursor: pointer; border: none; background: none; color: var(--text2); white-space: nowrap; transition: all .15s; }
+.txn-filter-pill { flex: 0 0 auto; padding: 7px 13px; font-size: 12.5px; background: var(--bg-deep); }
+.tab.active { background: var(--mint); color: #102015; }
+.tab-panel { display: none; animation: fadeIn .25s ease; }
+.tab-panel.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* summary cards */
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.card { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 16px 18px; position: relative; overflow: hidden; }
+.card-label { font-size: 11.5px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; }
+.card-value { font-size: 23px; font-weight: 700; letter-spacing: -0.02em; }
+.card-sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.c-income .card-value { color: var(--mint); }
+.c-expense .card-value { color: var(--coral); }
+.c-save .card-value { color: var(--lav); }
+.c-balance .card-value { color: var(--sand); }
+
+/* progress */
+.progress-wrap { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 18px; margin-bottom: 16px; }
+.progress-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.progress-header h2 { font-size: 15.5px; font-weight: 600; }
+.progress-bar { height: 9px; background: var(--bg-deep); border-radius: 99px; overflow: hidden; margin-bottom: 7px; }
+.progress-fill { height: 100%; border-radius: 99px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+.progress-ok { background: var(--mint); }
+.progress-warn { background: var(--sand); }
+.progress-over { background: var(--coral); }
+.progress-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); }
+.insight-box { padding: 13px 15px; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.55; margin-top: 12px; }
+.insight-ok { background: var(--mint-bg); color: var(--mint-text); }
+.insight-warn { background: var(--sand-bg); color: var(--sand-text); }
+.insight-danger { background: var(--coral-bg); color: var(--coral-text); }
+
+/* sections / rows */
+.section { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); margin-bottom: 16px; overflow: hidden; }
+.section-head { padding: 16px 18px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid var(--border); }
+.section-head h2 { font-size: 15.5px; font-weight: 600; }
+.section-head h3 { font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); }
+.add-btn { font-size: 13px; color: #102015; background: var(--mint); border: none; border-radius: 9px; padding: 7px 13px; cursor: pointer; font-weight: 700; }
+.add-btn:active { opacity: 0.85; }
+
+.row { display: flex; align-items: center; gap: 11px; padding: 13px 18px; border-bottom: 0.5px solid var(--border); }
+.row:last-child { border-bottom: none; }
+.row-icon { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; background: var(--surface2); }
+.row-info { flex: 1; min-width: 0; }
+.row-name { font-size: 14px; font-weight: 600; }
+.row-meta { font-size: 11.5px; color: var(--text3); margin-top: 1px; }
+.row-amount { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.row-amount.expense { color: var(--coral); }
+.row-amount.income { color: var(--mint); }
+.row-actions { display: flex; gap: 6px; }
+.icon-btn { background: none; border: 0.5px solid var(--border); border-radius: 8px; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text2); flex-shrink: 0; }
+.icon-btn:active { background: var(--surface2); }
+
+.tag { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 700; letter-spacing: 0.2px; }
+.tag-emi { background: var(--coral-bg); color: var(--coral-text); }
+.tag-fixed { background: var(--mint-bg); color: var(--mint-text); }
+.tag-variable { background: var(--sand-bg); color: var(--sand-text); }
+.tag-saving { background: var(--lav-bg); color: var(--lav-text); }
+.tag-rollover { background: var(--sky-bg); color: var(--sky-text); }
+.tag-pending { background: var(--surface3); color: var(--text2); }
+
+.total-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: var(--surface2); font-weight: 700; font-size: 14.5px; }
+
+/* member chips for who-paid */
+.member-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 20px; background: var(--surface2); font-size: 12px; font-weight: 600; border: 0.5px solid var(--border); }
+.member-chip .dot { width: 18px; height: 18px; font-size: 9px; }
+
+/* family overview */
+.constellation-wrap { background: var(--surface); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 28px 20px; margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; }
+.constellation { position: relative; width: 100%; max-width: 320px; aspect-ratio: 1; margin-bottom: 8px; }
+.const-center { position: absolute; top:50%; left:50%; transform: translate(-50%,-50%); text-align:center; z-index: 2; }
+.const-center .v { font-family: var(--font-display); font-size: 25px; font-weight: 700; }
+.const-center .l { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;}
+.const-member { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 5px; transform: translate(-50%,-50%); }
+.const-member .nm { font-size: 11px; font-weight: 600; color: var(--text2); white-space: nowrap; }
+.const-member .amt { font-size: 11px; color: var(--text3); }
+.const-member .dot { width: 46px; height: 46px; font-size: 16px; box-shadow: 0 0 0 4px var(--surface); }
+
+.member-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 10px; margin-bottom: 16px; }
+.member-card { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 14px 16px; }
+.member-card-head { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.member-card-head .nm { font-size: 13.5px; font-weight: 700; }
+.member-card-head .role { font-size: 10.5px; color: var(--text3); }
+.member-stat { display: flex; justify-content: space-between; font-size: 12.5px; padding: 3px 0; color: var(--text2); }
+.member-stat b { color: var(--text); font-weight: 700; }
+
+/* bank link */
+.bank-card { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 16px 18px; margin-bottom: 12px; display: flex; align-items: center; gap: 13px; }
+.bank-logo { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+.bank-info { flex: 1; min-width: 0; }
+.bank-name { font-size: 14.5px; font-weight: 700; }
+.bank-meta { font-size: 12px; color: var(--text3); margin-top: 1px; }
+.bank-balance { text-align: right; }
+.bank-balance .v { font-size: 16px; font-weight: 700; }
+.bank-balance .l { font-size: 10.5px; color: var(--text3); }
+.connect-bank-card { border: 1.5px dashed var(--border2); border-radius: var(--radius); padding: 22px 18px; text-align: center; margin-bottom: 12px; cursor: pointer; transition: border-color .15s; }
+.connect-bank-card:hover { border-color: var(--mint); }
+.connect-bank-card .ic { font-size: 26px; margin-bottom: 8px; }
+.connect-bank-card .t { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.connect-bank-card .s { font-size: 12px; color: var(--text3); }
+.synced-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--mint-text); background: var(--mint-bg); padding: 4px 9px; border-radius: 20px; font-weight: 600; }
+.pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mint); animation: pulse 1.6s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+.suggestion-row { display: flex; align-items: center; gap: 11px; padding: 12px 18px; border-bottom: 0.5px solid var(--border); background: var(--sky-bg); }
+.suggestion-row:last-child { border-bottom: none; }
+
+/* emergency fund + savings */
+.emfund-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.emfund-metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 13px 14px; }
+.em-label { font-size: 10.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: 600; }
+.em-value { font-size: 18px; font-weight: 700; }
+.em-note { font-size: 11.5px; color: var(--text2); margin-top: 2px; }
+.em-slider-row { margin-top: 14px; }
+.em-slider-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); margin-bottom: 7px; }
+input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
+.rollover-banner { display:flex; align-items:center; gap:11px; background: var(--lav-bg); color: var(--lav-text); border-radius: var(--radius-sm); padding: 13px 15px; font-size: 12.5px; line-height:1.5; margin-bottom: 14px; }
+.rollover-banner .ic { font-size: 19px; flex-shrink: 0; }
+
+/* modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: flex-end; justify-content: center; backdrop-filter: blur(2px); }
+.modal-overlay.open { display: flex; animation: fadeIn .2s ease; }
+.modal { background: var(--surface); border-radius: 22px 22px 0 0; padding: 22px 20px 26px; width: 100%; max-width: 760px; max-height: 88vh; overflow-y: auto; border-top: 0.5px solid var(--border2); }
+@media (min-width: 600px) { .modal { border-radius: var(--radius-lg); margin-bottom: 24px; } .modal-overlay { align-items: center; } }
+.modal h2 { margin-bottom: 18px; font-size: 17px; }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12.5px; color: var(--text2); margin-bottom: 6px; font-weight: 600; }
+.form-group input, .form-group select { width: 100%; padding: 11px 13px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); font-size: 15px; background: var(--bg-deep); color: var(--text); }
+.form-group input:focus, .form-group select:focus { outline: 2px solid var(--mint); outline-offset: 1px; }
+.modal-btns { display: flex; gap: 10px; margin-top: 8px; }
+.pill-select { display: flex; gap: 7px; flex-wrap: wrap; }
+.pill-opt { padding: 8px 13px; border-radius: 20px; border: 0.5px solid var(--border2); background: var(--bg-deep); color: var(--text2); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.pill-opt.sel { background: var(--mint); color: #102015; border-color: transparent; }
+
+.fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--mint), #8FCBAE); color: #102015; font-size: 24px; border: none; box-shadow: 0 6px 20px rgba(0,0,0,0.35); cursor: pointer; z-index: 50; display: none; align-items: center; justify-content: center; }
+@media (max-width: 760px) { .fab { display: flex; } }
+
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text3); }
+.empty-state .ic { font-size: 32px; margin-bottom: 10px; }
+.empty-state .t { font-size: 13.5px; }
+
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface3); color: var(--text); padding: 12px 20px; border-radius: 12px; font-size: 13.5px; font-weight: 600; box-shadow: var(--shadow); z-index: 200; opacity: 0; transition: all .3s; pointer-events: none; border: 0.5px solid var(--border2); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.settings-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 0.5px solid var(--border); }
+.settings-row:last-child { border-bottom: none; }
+.settings-row .l { font-size: 14px; font-weight: 600; }
+.settings-row .s { font-size: 12px; color: var(--text3); margin-top: 1px; }
+.switch { width: 42px; height: 25px; border-radius: 20px; background: var(--surface3); position: relative; cursor: pointer; flex-shrink:0; border: 0.5px solid var(--border2); }
+.switch.on { background: var(--mint); }
+.switch .knob { width: 19px; height: 19px; border-radius: 50%; background: var(--text); position: absolute; top: 2px; left: 2px; transition: left .2s; }
+.switch.on .knob { left: 19px; background: #102015; }
+
+.invite-box { display: flex; gap: 8px; background: var(--bg-deep); border: 0.5px dashed var(--border2); border-radius: var(--radius-sm); padding: 12px 14px; align-items: center; margin-top: 10px; }
+.invite-box code { flex: 1; font-size: 13px; color: var(--mint-text); font-family: monospace; overflow-x: auto; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<!-- ============ AUTH: WELCOME ============ -->
+<div class="screen active" id="screen-welcome">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="brand-mark">
+        <div class="brand-icon">🌿</div>
+        <div class="topbar-id">
+          <div class="brand-name">Attrangi Budgeter</div>
+          <div class="brand-tag">Money, together.</div>
+        </div>
+      </div>
+      <div class="auth-title">Welcome</div>
+      <div class="auth-sub">Track spending, build savings, and keep your whole household on the same page.</div>
+
+      <button class="btn btn-primary btn-block" onclick="goTo('signin')" style="margin-bottom:10px;">Sign in</button>
+      <button class="btn btn-ghost btn-block" onclick="goTo('signup')">Create an account</button>
+
+      <div class="mock-banner" style="margin-top:20px;">
+        <span>☁️</span>
+        <span>Your data syncs across all your devices — phone, tablet, laptop. Sign in with the same name and PIN anywhere. Bank connections are simulated for demo purposes.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ AUTH: SIGN UP ============ -->
+<div class="screen" id="screen-signup">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-title">Create your account</div>
+      <div class="auth-sub">Your name and PIN are stored securely in the cloud — sign in from any device, anytime.</div>
+
+      <div class="field">
+        <label>Your name</label>
+        <input type="text" id="su-name" placeholder="e.g. Priya Sharma" autocomplete="name">
+      </div>
+      <div class="field">
+        <label>Create a PIN (4–6 digits)</label>
+        <input type="password" id="su-pin" placeholder="••••" inputmode="numeric" maxlength="6" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label>Confirm PIN</label>
+        <input type="password" id="su-pin2" placeholder="••••" inputmode="numeric" maxlength="6" autocomplete="new-password">
+      </div>
+
+      <button class="btn btn-primary btn-block" id="su-btn" onclick="signUp()">Create account</button>
+      <div class="auth-foot">Already have an account? <a onclick="goTo('signin')">Sign in</a></div>
+
+      <div class="mock-banner" style="margin-top:18px;">
+        <span>🔒</span>
+        <span>Your PIN is hashed with SHA-256 before being stored in the cloud — we never store your raw PIN. Your name must be unique across all users worldwide.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ AUTH: SIGN IN ============ -->
+<div class="screen" id="screen-signin">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-title">Sign in</div>
+      <div class="auth-sub">Pick your profile and enter your PIN.</div>
+
+      <div class="field" id="si-profile-field">
+        <label>Profile</label>
+        <select id="si-user-select"></select>
+      </div>
+      <div class="field">
+        <label>PIN</label>
+        <input type="password" id="si-pin" placeholder="••••" inputmode="numeric" maxlength="6" autocomplete="current-password">
+      </div>
+
+      <button class="btn btn-primary btn-block" id="si-btn" onclick="signIn()">Sign in</button>
+      <div class="auth-foot">New here? <a onclick="goTo('signup')">Create an account</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ONBOARDING: HOUSEHOLD CHOICE ============ -->
+<div class="screen" id="screen-household">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-title">Set up your household</div>
+      <div class="auth-sub">Start a new household budget, or join family members who already have one.</div>
+
+      <div class="family-pill-list">
+        <div class="family-pill" onclick="goTo('create-household')">
+          <div class="avatar-dot" style="background:var(--mint);">＋</div>
+          <div>
+            <div style="font-weight:700;font-size:14px;">Create a household</div>
+            <div style="font-size:12px;color:var(--text3);">You'll get an invite code for family</div>
+          </div>
+        </div>
+        <div class="family-pill" onclick="goTo('join-household')">
+          <div class="avatar-dot" style="background:var(--lav);">🔗</div>
+          <div>
+            <div style="font-weight:700;font-size:14px;">Join with an invite code</div>
+            <div style="font-size:12px;color:var(--text3);">Got a code or link from a family member?</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ONBOARDING: CREATE HOUSEHOLD ============ -->
+<div class="screen" id="screen-create-household">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-title">Name your household</div>
+      <div class="auth-sub">This is the shared space your family will see together.</div>
+      <div class="field">
+        <label>Household name</label>
+        <input type="text" id="hh-name" placeholder="e.g. The Sharma Household">
+      </div>
+      <div class="field">
+        <label>Your color</label>
+        <div class="pill-select" id="hh-color-pick">
+          <div class="pill-opt sel" data-color="mint" style="background:var(--mint);width:34px;height:34px;border-radius:50%;padding:0;"></div>
+          <div class="pill-opt" data-color="lav" style="background:var(--lav);width:34px;height:34px;border-radius:50%;padding:0;"></div>
+          <div class="pill-opt" data-color="coral" style="background:var(--coral);width:34px;height:34px;border-radius:50%;padding:0;"></div>
+          <div class="pill-opt" data-color="sand" style="background:var(--sand);width:34px;height:34px;border-radius:50%;padding:0;"></div>
+          <div class="pill-opt" data-color="sky" style="background:var(--sky);width:34px;height:34px;border-radius:50%;padding:0;"></div>
+          <div class="pill-opt" data-color="rose" style="background:var(--rose);width:34px;height:34px;border-radius:50%;padding:0;"></div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="createHousehold()" style="margin-top:6px;">Create household</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ONBOARDING: JOIN HOUSEHOLD ============ -->
+<div class="screen" id="screen-join-household">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-title">Join a household</div>
+      <div class="auth-sub">Enter the invite code a family member shared with you.</div>
+      <div class="field">
+        <label>Invite code</label>
+        <input type="text" id="join-code" placeholder="e.g. SHARMA-4F2K" style="text-transform:uppercase;">
+      </div>
+      <div class="field">
+        <label>Your color</label>
+        <div class="pill-select" id="join-color-pick">
+          <div class="pill-opt sel" data-color="lav" style="background:var(--lav);width:34px;height:34px;border-radius:50%;padding:0;"></div>
+          <div class="pill-opt" data-color="coral" style="background:var(--coral);width:34px;height:34px;border-radius:50%;padding:0;"></div>
+          <div class="pill-opt" data-color="sand" style="background:var(--sand);width:34px;height:34px;border-radius:50%;padding:0;"></div>
+          <div class="pill-opt" data-color="sky" style="background:var(--sky);width:34px;height:34px;border-radius:50%;padding:0;"></div>
+          <div class="pill-opt" data-color="rose" style="background:var(--rose);width:34px;height:34px;border-radius:50%;padding:0;"></div>
+          <div class="pill-opt" data-color="mint" style="background:var(--mint);width:34px;height:34px;border-radius:50%;padding:0;"></div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="joinHousehold()" style="margin-top:6px;">Join household</button>
+      <div class="auth-foot"><a onclick="goTo('household')">← Back</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div class="screen" id="screen-app">
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="avatar-dot" id="me-avatar" style="width:40px;height:40px;font-size:15px;">P</div>
+        <div class="topbar-id">
+          <div class="topbar-name" id="topbar-name">—</div>
+          <div class="topbar-house" id="topbar-house">—</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="month-pill">
+          <span>📅</span>
+          <select id="monthSelect" onchange="onMonthChange()">
+            <option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option>
+            <option>May</option><option>Jun</option><option selected>Jul</option>
+            <option>Aug</option><option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
+          </select>
+          <select id="yearSelect" onchange="onMonthChange()" style="margin-left:4px;"></select>
+        </div>
+        <div class="icon-pill" onclick="openModal('settings')" title="Settings">⚙️</div>
+        <div class="icon-pill" onclick="syncFromCloud()" title="Sync latest data">🔄</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="overview" onclick="switchTab('overview')">Overview</button>
+      <button class="tab" data-tab="expenses" onclick="switchTab('expenses')">Expenses</button>
+      <button class="tab" data-tab="income" onclick="switchTab('income')">Income</button>
+      <button class="tab" data-tab="bank" onclick="switchTab('bank')">Accounts</button>
+      <button class="tab" data-tab="investments" onclick="switchTab('investments')">Investments</button>
       <button class="tab" data-tab="savings" onclick="switchTab('savings')">Savings</button>
       <button class="tab" data-tab="family" onclick="switchTab('family')">Family</button>
       <button class="tab" data-tab="transactions" onclick="switchTab('transactions')">Transactions</button>
