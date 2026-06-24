@@ -908,22 +908,32 @@ async function saveStore(){
   // under reserved keys, since there's no separate database column for either —
   // without this they were never being saved at all.
   const payload = { ...hh.data, __accounts__: hh.accounts || {}, __recurring__: hh.recurring || {} };
-  await supa.from('households').upsert({
+  const { error: hhError } = await supa.from('households').upsert({
     id: hh.id,
     invite_code: hh.inviteCode,
     name: hh.name,
     member_ids: hh.memberIds,
     data: payload
   });
+  if (hhError) {
+    console.error('saveStore: households upsert failed', hhError);
+    showToast('⚠️ Could not save — check your connection and try again');
+    throw new Error('saveStore failed: ' + hhError.message);
+  }
   // persist user profile
   const u = currentUser();
-  await supa.from('users').upsert({
+  const { error: userError } = await supa.from('users').upsert({
     id: u.id,
     name: u.name,
     pin_hash: u.pinHash,
     color: u.color,
     household_id: u.householdId
   });
+  if (userError) {
+    console.error('saveStore: users upsert failed', userError);
+    showToast('⚠️ Could not save your profile — check your connection');
+    throw new Error('saveStore failed: ' + userError.message);
+  }
 }
 
 /* Reload household data from Supabase into DB */
