@@ -1977,15 +1977,21 @@ function renderOverview(){
   const d = myData();
   const income = totalIncome(d);
   const expenses = totalExpenses(d);
-  const savings = totalSavings(d);
+  const savings = totalSavings(d); // full figure, used only for the balance/progress math below
+  // "Savings" shown to the user should mean money YOU actively set aside this
+  // month — not last month's carried-forward surplus quietly counted as if
+  // you'd just saved it. That carried-forward amount is still real money and
+  // still affects your true balance below, it's just not double-billed as
+  // "savings" on this card.
+  const ownSavings = allExpenses(d).filter(e=>e.cat==='savings' && !e.carriedFromPeriod).reduce((a,e)=>a+e.amount,0);
   const total = expenses + savings;
   const balance = income - total;
   const pct = income > 0 ? Math.round((total/income)*100) : 0;
-  const savingsPct = income > 0 ? Math.round((savings/income)*100) : 0;
+  const savingsPct = income > 0 ? Math.round((ownSavings/income)*100) : 0;
 
   document.getElementById('ov-income').textContent = fmt(income);
   document.getElementById('ov-expenses').textContent = fmt(expenses);
-  document.getElementById('ov-savings').textContent = fmt(savings);
+  document.getElementById('ov-savings').textContent = fmt(ownSavings);
   document.getElementById('ov-savings-pct').textContent = savingsPct+'% of income';
   document.getElementById('ov-balance').textContent = fmt(balance);
   document.getElementById('ov-balance-note').textContent = balance>=0 ? 'Surplus this month 🎉' : 'Deficit this month ⚠️';
@@ -2017,10 +2023,10 @@ function renderOverview(){
     insight.textContent = `⚠️ You're overspending by ${fmt(Math.abs(balance))} this month. Consider trimming variable expenses.`;
   } else if (savingsPct < 15) {
     insight.className='insight-box insight-warn';
-    insight.textContent = `💡 Saving ${savingsPct}% of income. Experts suggest at least 20%. Try increasing savings by ${fmt(Math.max(0,income*0.2-savings))}/month.`;
+    insight.textContent = `💡 Saving ${savingsPct}% of income. Experts suggest at least 20%. Try increasing savings by ${fmt(Math.max(0,income*0.2-ownSavings))}/month.`;
   } else {
     insight.className='insight-box insight-ok';
-    insight.textContent = `✅ Nice — you're saving ${savingsPct}% of income (${fmt(savings)}/mo). This month's surplus: ${fmt(balance)}.`;
+    insight.textContent = `✅ Nice — you're saving ${savingsPct}% of income (${fmt(ownSavings)}/mo). This month's surplus: ${fmt(balance)}.`;
   }
 
   const byCategory = {};
@@ -2489,18 +2495,27 @@ function renderSavings(){
   const hh = currentHousehold();
   const acc = myAccounts();
   const income = totalIncome(d);
-  const savedThisMonth = totalSavings(d);
-  document.getElementById('sav-month').textContent = fmt(savedThisMonth);
-  document.getElementById('sav-month-pct').textContent = (income? Math.round(savedThisMonth/income*100):0) + '% of income';
+
+  // "Saved this month" should mean money YOU actively put toward savings this
+  // month — not last month's leftover surplus that got carried in and tagged
+  // as a savings line behind the scenes. Those carried-forward lines are
+  // shown as their own separate, editable figure below instead of silently
+  // blending into this month's number.
+  const ownSavedThisMonth = allExpenses(d).filter(e=>e.cat==='savings' && !e.carriedFromPeriod).reduce((a,e)=>a+e.amount,0);
+  document.getElementById('sav-month').textContent = fmt(ownSavedThisMonth);
+  document.getElementById('sav-month-pct').textContent = (income? Math.round(ownSavedThisMonth/income*100):0) + '% of income';
 
   const netWorth = totalNetWorth(d);
   document.getElementById('sav-total').textContent = fmt(netWorth);
 
   // Lifetime and year-to-date savings: walk every month this user has ever
-  // recorded data for for (any household data key matching y<year>m<month>),
-  // and sum up that month's savings-category total. This is independent of
-  // bank balance/carry-forward — it's simply "how much have I logged as
-  // savings, month by month, all the way back."
+  // recorded data for (any household data key matching y<year>m<month>), and
+  // sum up that month's OWN savings only — not lines carried in from the
+  // month before, which would otherwise count the same surplus twice (once
+  // as the month it was actually saved, and again as the month it carried
+  // into). This is independent of bank balance/carry-forward — it's simply
+  // "how much have I actively put toward savings, month by month, all the
+  // way back."
   let lifetimeSaved = 0;
   let ytdSaved = 0;
   let earliestPeriod = null;
@@ -2511,7 +2526,7 @@ function renderSavings(){
     const km = parseInt(match[2], 10);
     const monthData = hh.data[key][DB.session];
     if (!monthData) return;
-    const saved = totalSavings(monthData);
+    const saved = allExpenses(monthData).filter(e=>e.cat==='savings' && !e.carriedFromPeriod).reduce((a,e)=>a+e.amount,0);
     lifetimeSaved += saved;
     if (ky === yearIndex) ytdSaved += saved;
     if (!earliestPeriod || ky < earliestPeriod.y || (ky === earliestPeriod.y && km < earliestPeriod.m)) {
@@ -2552,7 +2567,7 @@ function renderSavings(){
     while (m < 0) { m += 12; y -= 1; }
     const key = periodKey(y, m);
     const monthData = hh.data[key] && hh.data[key][DB.session];
-    const saved = monthData ? totalSavings(monthData) : 0;
+    const saved = monthData ? allExpenses(monthData).filter(e=>e.cat==='savings' && !e.carriedFromPeriod).reduce((a,e)=>a+e.amount,0) : 0;
     rows.push({ label: MONTHS[m] + ' ' + y, saved, isCurrent: (y===yearIndex && m===monthIndex) });
   }
   const maxSaved = Math.max(1, ...rows.map(r=>r.saved));
@@ -2732,7 +2747,7 @@ function memberStatsFor(hh, mIdx, viewerId, targetUserId, yIdx){
   const stats = {
     income: totalIncome(d),
     expenses: totalExpenses(d),
-    savings: totalSavings(d)
+    savings: allExpenses(d).filter(e=>e.cat==='savings' && !e.carriedFromPeriod).reduce((a,e)=>a+e.amount,0)
   };
   if (canSeeDetail) {
     stats.detail = d; // only attached when the viewer is permitted to see it
@@ -2892,7 +2907,8 @@ async function updateEmergency(){
   d.emergency = { months, current, timeline };
   saveStore(); // fire-and-forget
 
-  const monthly = totalExpenses(d) + totalSavings(d);
+  const ownSavingsForEmergency = allExpenses(d).filter(e=>e.cat==='savings' && !e.carriedFromPeriod).reduce((a,e)=>a+e.amount,0);
+  const monthly = totalExpenses(d) + ownSavingsForEmergency;
   const target = monthly * months;
   const gap = Math.max(0, target - current);
   const needed = gap > 0 ? Math.ceil(gap/timeline) : 0;
