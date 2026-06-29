@@ -836,6 +836,14 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
 
       <div class="section">
         <div class="section-head">
+          <h2>This month's savings</h2>
+          <button class="add-btn" onclick="openModal('savingsEntry')">+ Add</button>
+        </div>
+        <div id="savings-entries-list"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
           <h2>Savings goals</h2>
           <button class="add-btn" onclick="openModal('goal')">+ Add goal</button>
         </div>
@@ -1004,12 +1012,17 @@ const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 const ICONS = {
   emi: '🏦', rent: '🏠', utilities: '💡', food: '🍱', transport: '⛽',
-  insurance: '🛡️', family: '👨‍👩‍👧', subscriptions: '📱', savings: '💎', other: '💼'
+  insurance: '🛡️', family: '👨‍👩‍👧', subscriptions: '📱', savings: '💎',
+  health: '💊', shopping: '🛍️', education: '🎓', travel: '✈️',
+  entertainment: '🎬', personal: '🧴', groceries: '🛒', other: '💼'
 };
 const LABELS = {
   emi: 'EMI / Loan', rent: 'Rent', utilities: 'Utilities', food: 'Food',
   transport: 'Transport', insurance: 'Insurance', family: 'Family',
-  subscriptions: 'Subscriptions', savings: 'Savings', other: 'Other'
+  subscriptions: 'Subscriptions', savings: 'Savings',
+  health: 'Health / Medical', shopping: 'Shopping', education: 'Education',
+  travel: 'Travel', entertainment: 'Entertainment', personal: 'Personal care',
+  groceries: 'Groceries', other: 'Other'
 };
 /* Income gets its own category set — these are different kinds of money
    coming in, not the same list used for where money goes out. */
@@ -2457,6 +2470,7 @@ async function deleteInvestment(id){
    ============================================================ */
 function loanRowHtml(l){
   const linkedTpl = l.linkedExpenseId ? myRecurring().templates.find(t=>t.id===l.linkedExpenseId) : null;
+  const endLabel = l.endDate ? `Ends ${MONTHS[l.endDate.m]} ${l.endDate.y}` : null;
   return `
     <div class="row">
       <div class="row-icon">${l.direction==='owe' ? '📤' : '📥'}</div>
@@ -2465,6 +2479,9 @@ function loanRowHtml(l){
         <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;">
           ${linkedTpl ? `<span class="tag" title="Auto-reduces with this bill">🔁 ${linkedTpl.name}</span>` : ''}
           ${l.principal ? `<span style="font-size:11.5px;color:var(--text3)" class="num">of ${fmt(l.principal)}</span>` : ''}
+          ${l.interestRate ? `<span style="font-size:11.5px;color:var(--text3)" class="num">${l.interestRate}% p.a.</span>` : ''}
+          ${l.tenureMonths ? `<span style="font-size:11.5px;color:var(--text3)">${l.tenureMonths} mo term</span>` : ''}
+          ${endLabel ? `<span style="font-size:11.5px;color:var(--text3)">${endLabel}</span>` : ''}
         </div>
       </div>
       <div style="text-align:right">
@@ -2503,18 +2520,33 @@ async function saveLoan(editId){
   const direction = document.getElementById('inp-loan-direction').value;
   const principal = parseFloat(document.getElementById('inp-loan-principal').value) || 0;
   const balance = parseFloat(document.getElementById('inp-loan-balance').value) || 0;
+  const interestRate = parseFloat(document.getElementById('inp-loan-rate').value) || null;
+  const tenureMonths = parseInt(document.getElementById('inp-loan-tenure').value, 10) || null;
+  const endDate = parseLoanEndMonthInput();
   const linkSel = document.getElementById('inp-loan-link');
   const linkedExpenseId = (direction === 'owe' && linkSel && linkSel.value) ? parseInt(linkSel.value, 10) : null;
   if (!name || balance < 0) return showToast('Enter a name and outstanding amount');
 
+  let loan;
   if (editId) {
-    const l = acc.loans.find(x=>String(x.id)===String(editId));
-    if (l) { l.name = name; l.direction = direction; l.principal = principal; l.balance = balance; l.linkedExpenseId = linkedExpenseId; }
+    loan = acc.loans.find(x=>String(x.id)===String(editId));
+    if (loan) { loan.name = name; loan.direction = direction; loan.principal = principal; loan.balance = balance; loan.interestRate = interestRate; loan.tenureMonths = tenureMonths; loan.endDate = endDate; loan.linkedExpenseId = linkedExpenseId; }
     logTransaction(myData(), { kind: 'loan', action: 'edited', name, amount: balance });
   } else {
-    acc.loans.push({ id: acc.nextLoanId++, name, direction, principal, balance, linkedExpenseId });
+    loan = { id: acc.nextLoanId++, name, direction, principal, balance, interestRate, tenureMonths, endDate, linkedExpenseId };
+    acc.loans.push(loan);
     logTransaction(myData(), { kind: 'loan', action: 'added', name, amount: balance });
   }
+
+  // If this loan has an end date and is linked to a recurring EMI, the EMI
+  // should automatically stop repeating after that month too — otherwise
+  // it would keep showing up as a bill every month even after the loan is
+  // fully paid off and this end date has passed.
+  if (linkedExpenseId) {
+    const tpl = myRecurring().templates.find(t => t.id === linkedExpenseId);
+    if (tpl) tpl.endPeriod = endDate;
+  }
+
   await saveStore();
   closeModal('modal-loan');
   renderAll();
@@ -2533,11 +2565,110 @@ async function deleteLoan(id){
 /* ============================================================
    RENDER: SAVINGS
    ============================================================ */
+/* ============================================================
+   SAVINGS ENTRIES — a direct way to add, edit, or delete a
+   savings amount for the month, right from the Savings tab,
+   instead of having to go through the Expenses tab. Under the
+   hood this is the exact same data as a fixed expense tagged
+   "savings" — this is just a more direct front door to it.
+   ============================================================ */
+function renderSavingsEntries(d){
+  const list = document.getElementById('savings-entries-list');
+  const entries = d.expensesFixed.filter(e => e.cat === 'savings' && !e.carriedFromPeriod);
+  if (!entries.length) {
+    list.innerHTML = `<div class="empty-state"><div class="ic">💎</div><div class="t">Nothing logged yet. Tap "+ Add" to record money you're setting aside this month.</div></div>`;
+    return;
+  }
+  list.innerHTML = entries.map(e => `
+    <div class="row">
+      <div class="row-icon">💎</div>
+      <div class="row-info">
+        <div class="row-name">${e.name}${e.recurringId ? ' <span title="Repeats every month" style="font-size:11px;">🔁</span>' : ''}</div>
+      </div>
+      <div class="row-amount num" style="color:var(--lav)">${fmt(e.amount)}</div>
+      <div class="row-actions">
+        <button class="icon-btn" onclick="openModal('savingsEntry','${e.id}')">✏️</button>
+        <button class="icon-btn" onclick="deleteSavingsEntry('${e.id}')">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function saveSavingsEntry(editId){
+  const name = document.getElementById('sav-entry-name').value.trim();
+  const amount = parseFloat(document.getElementById('sav-entry-amount').value);
+  const wantsRecurring = document.getElementById('sav-entry-recurring').checked;
+  if (!name || isNaN(amount) || amount <= 0) return showToast('Enter a name and amount');
+  const d = myData();
+  const r = myRecurring();
+
+  if (editId) {
+    const existing = d.expensesFixed.find(x=>String(x.id)===String(editId));
+    const oldRecurringId = existing.recurringId;
+    let applyForward = false;
+    if (oldRecurringId) {
+      applyForward = await confirmDialog('Apply this change to future months too?', 'This savings entry repeats. You can update just this month, or this and every month after it.', 'Just this month', 'This & future months');
+    }
+    Object.assign(existing, { name, amount });
+    if (oldRecurringId && applyForward) {
+      const tpl = r.templates.find(t=>t.id===oldRecurringId);
+      if (tpl) { tpl.name = name; tpl.amount = amount; }
+    } else if (oldRecurringId && !applyForward) {
+      delete existing.recurringId;
+    } else if (!oldRecurringId && wantsRecurring) {
+      const tpl = { id: r.nextId++, name, amount, cat: 'savings', paidBy: DB.session, startPeriod: { y: yearIndex, m: monthIndex }, endPeriod: null };
+      r.templates.push(tpl);
+      existing.recurringId = tpl.id;
+    }
+    logTransaction(d, { kind: 'expense', action: 'edited', name, amount, cat: 'savings' });
+  } else {
+    const entry = { id: d.nextExpId++, name, amount, cat: 'savings', type: 'fixed', paidBy: DB.session };
+    if (wantsRecurring) {
+      const tpl = { id: r.nextId++, name, amount, cat: 'savings', paidBy: DB.session, startPeriod: { y: yearIndex, m: monthIndex }, endPeriod: null };
+      r.templates.push(tpl);
+      entry.recurringId = tpl.id;
+    }
+    d.expensesFixed.push(entry);
+    logTransaction(d, { kind: 'expense', action: 'added', name, amount, cat: 'savings' });
+  }
+  showToast('Saving…');
+  await saveStore();
+  closeModal('modal-savingsEntry');
+  renderAll();
+  showToast('Savings saved ✓');
+}
+
+async function deleteSavingsEntry(id){
+  const d = myData();
+  const existing = d.expensesFixed.find(e=>String(e.id)===String(id));
+  if (!existing) return;
+  if (existing.recurringId) {
+    const stopForever = await confirmDialog(
+      'This savings entry repeats',
+      'Do you want to remove it from just this month, or stop it from repeating in future months too?',
+      'Just this month', 'Stop repeating'
+    );
+    if (stopForever) {
+      const tpl = myRecurring().templates.find(t=>t.id===existing.recurringId);
+      if (tpl) tpl.endPeriod = prevPeriod(yearIndex, monthIndex);
+    } else {
+      if (!d.skippedRecurringIds) d.skippedRecurringIds = [];
+      d.skippedRecurringIds.push(existing.recurringId);
+    }
+  }
+  d.expensesFixed = d.expensesFixed.filter(e=>String(e.id)!==String(id));
+  logTransaction(d, { kind: 'expense', action: 'deleted', name: existing.name, amount: existing.amount, cat: 'savings' });
+  await saveStore(); renderAll();
+  showToast('Savings entry removed');
+}
+
 function renderSavings(){
   const d = myData();
   const hh = currentHousehold();
   const acc = myAccounts();
   const income = totalIncome(d);
+
+  renderSavingsEntries(d);
 
   // "Saved this month" should mean money YOU actively put toward savings this
   // month — not last month's leftover surplus that got carried in and tagged
@@ -3180,6 +3311,7 @@ function openModal(kind, id, defaultType){
     // any category, and restricting the list made it easy to end up with
     // nothing to link to.
     const emiTemplates = myRecurring().templates;
+    const hasEnd = editing && editing.endDate;
     html = `
       <div class="modal-overlay open" id="modal-loan" onclick="closeModalOnBg(event,'modal-loan')">
         <div class="modal" onclick="event.stopPropagation()">
@@ -3193,6 +3325,18 @@ function openModal(kind, id, defaultType){
           <div class="form-group"><label>Name</label><input type="text" id="inp-loan-name" placeholder="e.g. Home loan, Personal loan, Loan to Raj" value="${editing ? editing.name : ''}"></div>
           <div class="form-group"><label>Original amount (optional)</label><input type="number" id="inp-loan-principal" placeholder="0" value="${editing ? (editing.principal||'') : ''}"></div>
           <div class="form-group"><label>Outstanding balance now</label><input type="number" id="inp-loan-balance" placeholder="0" value="${editing ? (editing.balance||'') : ''}"></div>
+          <div class="form-group"><label>Interest rate (% per year, optional)</label><input type="number" step="0.01" id="inp-loan-rate" placeholder="e.g. 8.5" value="${editing && editing.interestRate ? editing.interestRate : ''}"></div>
+          <div class="form-group"><label>Loan term (months, optional)</label><input type="number" id="inp-loan-tenure" placeholder="e.g. 60" value="${editing && editing.tenureMonths ? editing.tenureMonths : ''}"></div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="loan-has-end" style="width:18px;height:18px;" ${hasEnd?'checked':''} onchange="document.getElementById('loan-end-date-wrap').style.display=this.checked?'':'none'">
+              This loan ends on a known date
+            </label>
+            <div id="loan-end-date-wrap" style="display:${hasEnd?'':'none'};margin-top:8px;">
+              <input type="month" id="inp-loan-end" value="${hasEnd ? (editing.endDate.y+'-'+String(editing.endDate.m+1).padStart(2,'0')) : ''}">
+              <div style="font-size:11.5px;color:var(--text3);margin-top:6px;">If this loan is linked to a recurring EMI below, that EMI bill automatically stops repeating after this month too — so it won't keep showing up once the loan is paid off.</div>
+            </div>
+          </div>
           <div class="form-group" id="loan-link-group" style="display:${direction==='owe'?'':'none'};">
             <label>Link to a recurring bill (optional)</label>
             ${emiTemplates.length ? `
@@ -3211,6 +3355,26 @@ function openModal(kind, id, defaultType){
           <div class="modal-btns">
             <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-loan')">Cancel</button>
             <button class="btn btn-primary" style="flex:1" onclick="saveLoan('${editing ? editing.id : ''}')">Save</button>
+          </div>
+        </div>
+      </div>`;
+  } else if (kind === 'savingsEntry') {
+    const d = myData();
+    const editing = id ? d.expensesFixed.find(e=>String(e.id)===String(id)) : null;
+    const isRecurring = !!(editing && editing.recurringId);
+    html = `
+      <div class="modal-overlay open" id="modal-savingsEntry" onclick="closeModalOnBg(event,'modal-savingsEntry')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>${editing ? 'Edit savings' : 'Add savings'}</h2>
+          <div class="form-group"><label>What's this for?</label><input type="text" id="sav-entry-name" placeholder="e.g. SIP, Recurring deposit, Set aside" value="${editing ? editing.name : ''}"></div>
+          <div class="form-group"><label>Amount (₹)</label><input type="number" id="sav-entry-amount" placeholder="0" value="${editing ? editing.amount : ''}"></div>
+          <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="sav-entry-recurring" style="width:18px;height:18px;" ${isRecurring?'checked':''}>
+            <label style="margin:0;" for="sav-entry-recurring">Repeat every month</label>
+          </div>
+          <div class="modal-btns">
+            <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-savingsEntry')">Cancel</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveSavingsEntry('${editing ? editing.id : ''}')">Save</button>
           </div>
         </div>
       </div>`;
@@ -3354,6 +3518,12 @@ function parseEndMonthInput(){
 }
 function parseIncomeEndMonthInput(){
   const v = document.getElementById('inc-has-end').checked ? document.getElementById('inc-end-month').value : '';
+  if (!v) return null;
+  const [y, m] = v.split('-').map(Number);
+  return { y, m: m-1 };
+}
+function parseLoanEndMonthInput(){
+  const v = document.getElementById('loan-has-end').checked ? document.getElementById('inp-loan-end').value : '';
   if (!v) return null;
   const [y, m] = v.split('-').map(Number);
   return { y, m: m-1 };
