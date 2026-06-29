@@ -43,6 +43,17 @@
   --rose: #E8B4C8;
   --rose-bg: #2E1F28;
 
+  /* brand accent — the app's primary color, used for buttons, active tabs,
+     and anything that represents the app itself rather than a person.
+     Kept separate from --mint (which stays available as one of the six
+     personal avatar colors people can pick in Settings) so re-theming the
+     brand never confuses or recolors anyone who picked mint for themselves. */
+  --brand: #E8B088;
+  --brand-dark: #D89968;
+  --brand-bg: #2E2419;
+  --brand-text: #F0CBA8;
+  --brand-ink: #2A1A0E;
+
   --radius: 18px;
   --radius-sm: 12px;
   --radius-lg: 24px;
@@ -114,7 +125,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .brand-icon {
   width: 38px; height: 38px;
   border-radius: 11px;
-  background: linear-gradient(135deg, var(--mint), var(--sky));
+  background: linear-gradient(135deg, var(--brand), var(--sky));
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -139,17 +150,17 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
   color: var(--text);
 }
 .field input::placeholder { color: var(--text3); }
-.field input:focus, .field select:focus { outline: 2px solid var(--mint); outline-offset: 1px; border-color: transparent; }
+.field input:focus, .field select:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: transparent; }
 .phone-row { display: flex; gap: 8px; }
 .phone-row .cc { width: 78px; flex-shrink: 0; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; padding: 13px 18px; transition: transform .1s, opacity .15s; }
 .btn:active { transform: scale(0.98); }
 .btn-block { width: 100%; }
-.btn-primary { background: linear-gradient(135deg, var(--mint), #8FCBAE); color: #0e1f15; }
+.btn-primary { background: linear-gradient(135deg, var(--brand), var(--brand-dark)); color: var(--brand-ink); }
 .btn-primary:hover { opacity: 0.92; }
 .btn-ghost { background: var(--surface2); color: var(--text); border: 0.5px solid var(--border2); }
-.btn-text { background: none; color: var(--mint); font-size: 13.5px; padding: 8px; font-weight: 600; }
+.btn-text { background: none; color: var(--brand); font-size: 13.5px; padding: 8px; font-weight: 600; }
 .btn-sm { padding: 8px 12px; font-size: 13px; border-radius: 9px; }
 .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
 
@@ -157,7 +168,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .otp-box { width: 100%; aspect-ratio: 1; text-align: center; font-size: 20px; font-weight: 700; padding: 0; }
 
 .auth-foot { text-align: center; margin-top: 18px; font-size: 13px; color: var(--text3); }
-.auth-foot a { color: var(--mint); text-decoration: none; font-weight: 600; cursor: pointer; }
+.auth-foot a { color: var(--brand); text-decoration: none; font-weight: 600; cursor: pointer; }
 
 .divider-or { display: flex; align-items: center; gap: 10px; margin: 18px 0; color: var(--text3); font-size: 12px; }
 .divider-or::before, .divider-or::after { content: ''; flex: 1; height: 0.5px; background: var(--border2); }
@@ -202,7 +213,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .tabs { display: flex; gap: 5px; margin-bottom: 18px; background: var(--surface); padding: 5px; border-radius: var(--radius); border: 0.5px solid var(--border); overflow-x: auto; }
 .tab { flex: 1; min-width: max-content; padding: 9px 14px; text-align: center; font-size: 13px; font-weight: 600; border-radius: 11px; cursor: pointer; border: none; background: none; color: var(--text2); white-space: nowrap; transition: all .15s; }
 .txn-filter-pill { flex: 0 0 auto; padding: 7px 13px; font-size: 12.5px; background: var(--bg-deep); }
-.tab.active { background: var(--mint); color: #102015; }
+.tab.active { background: var(--brand); color: var(--brand-ink); }
 .tab-panel { display: none; animation: fadeIn .25s ease; }
 .tab-panel.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
@@ -238,7 +249,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .section-head { padding: 16px 18px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid var(--border); }
 .section-head h2 { font-size: 15.5px; font-weight: 600; }
 .section-head h3 { font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); }
-.add-btn { font-size: 13px; color: #102015; background: var(--mint); border: none; border-radius: 9px; padding: 7px 13px; cursor: pointer; font-weight: 700; }
+.add-btn { font-size: 13px; color: var(--brand-ink); background: var(--brand); border: none; border-radius: 9px; padding: 7px 13px; cursor: pointer; font-weight: 700; }
 .add-btn:active { opacity: 0.85; }
 
 .row { display: flex; align-items: center; gap: 11px; padding: 13px 18px; border-bottom: 0.5px solid var(--border); }
@@ -297,7 +308,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .bank-balance .v { font-size: 16px; font-weight: 700; }
 .bank-balance .l { font-size: 10.5px; color: var(--text3); }
 .connect-bank-card { border: 1.5px dashed var(--border2); border-radius: var(--radius); padding: 22px 18px; text-align: center; margin-bottom: 12px; cursor: pointer; transition: border-color .15s; }
-.connect-bank-card:hover { border-color: var(--mint); }
+.connect-bank-card:hover { border-color: var(--brand); }
 .connect-bank-card .ic { font-size: 26px; margin-bottom: 8px; }
 .connect-bank-card .t { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
 .connect-bank-card .s { font-size: 12px; color: var(--text3); }
@@ -316,7 +327,7 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .em-note { font-size: 11.5px; color: var(--text2); margin-top: 2px; }
 .em-slider-row { margin-top: 14px; }
 .em-slider-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); margin-bottom: 7px; }
-input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
+input[type=range] { width: 100%; accent-color: var(--brand); height: 4px; }
 .rollover-banner { display:flex; align-items:center; gap:11px; background: var(--lav-bg); color: var(--lav-text); border-radius: var(--radius-sm); padding: 13px 15px; font-size: 12.5px; line-height:1.5; margin-bottom: 14px; }
 .rollover-banner .ic { font-size: 19px; flex-shrink: 0; }
 
@@ -329,13 +340,13 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
 .form-group { margin-bottom: 14px; }
 .form-group label { display: block; font-size: 12.5px; color: var(--text2); margin-bottom: 6px; font-weight: 600; }
 .form-group input, .form-group select { width: 100%; padding: 11px 13px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); font-size: 15px; background: var(--bg-deep); color: var(--text); }
-.form-group input:focus, .form-group select:focus { outline: 2px solid var(--mint); outline-offset: 1px; }
+.form-group input:focus, .form-group select:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
 .modal-btns { display: flex; gap: 10px; margin-top: 8px; }
 .pill-select { display: flex; gap: 7px; flex-wrap: wrap; }
 .pill-opt { padding: 8px 13px; border-radius: 20px; border: 0.5px solid var(--border2); background: var(--bg-deep); color: var(--text2); font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .pill-opt.sel { background: var(--mint); color: #102015; border-color: transparent; }
 
-.fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--mint), #8FCBAE); color: #102015; font-size: 24px; border: none; box-shadow: 0 6px 20px rgba(0,0,0,0.35); cursor: pointer; z-index: 50; display: none; align-items: center; justify-content: center; }
+.fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--brand), var(--brand-dark)); color: var(--brand-ink); font-size: 24px; border: none; box-shadow: 0 6px 20px rgba(0,0,0,0.35); cursor: pointer; z-index: 50; display: none; align-items: center; justify-content: center; }
 @media (max-width: 760px) { .fab { display: flex; } }
 
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); }
@@ -365,7 +376,7 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
   <div class="auth-wrap">
     <div class="auth-card">
       <div class="brand-mark">
-        <div class="brand-icon">🌿</div>
+        <div class="brand-icon">👛</div>
         <div class="topbar-id">
           <div class="brand-name">Attrangi Budgeter</div>
           <div class="brand-tag">Money, together.</div>
@@ -504,7 +515,7 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
 
       <div class="family-pill-list">
         <div class="family-pill" onclick="goTo('create-household')">
-          <div class="avatar-dot" style="background:var(--mint);">＋</div>
+          <div class="avatar-dot" style="background:var(--brand);">＋</div>
           <div>
             <div style="font-weight:700;font-size:14px;">Create a household</div>
             <div style="font-size:12px;color:var(--text3);">You'll get an invite code for family</div>
@@ -834,6 +845,12 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
         </div>
       </div>
 
+      <div class="card" id="sav-planned-card" style="display:none;border-style:dashed;border-color:var(--border);margin-bottom:16px;">
+        <div class="card-label">📋 Planned for <span id="sav-planned-month"></span> — not yet real</div>
+        <div class="card-value num" id="sav-planned-amount" style="color:var(--text2);">₹0</div>
+        <div class="card-sub">Logged on the Next Month tab. This is a plan, not money you've saved yet — it won't count toward your totals above until that month actually arrives.</div>
+      </div>
+
       <div class="section">
         <div class="section-head">
           <h2>This month's savings</h2>
@@ -993,22 +1010,112 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
 
 <!-- Boot loading overlay -->
 <div id="boot-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:14px;">
-  <div style="font-size:36px;">🌿</div>
+  <div style="font-size:36px;">👛</div>
   <div style="font-family:'Lexend',sans-serif;font-size:18px;font-weight:700;color:#f1f0f3;">Attrangi Budgeter</div>
   <div style="font-size:13px;color:#6f6d7a;">Loading your data…</div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ============================================================
    ATTRANGI BUDGETER — Family Budget Tracker
-   Cross-device sync via Supabase. All data lives in the cloud.
+   Cross-device sync via a self-hosted Node.js + SQLite API
+   (previously Supabase). All data lives on your own server now.
    ============================================================ */
 
-/* ── Supabase client ── */
-const SUPA_URL = 'https://lsyrynzkmyludtaeshnx.supabase.co';
-const SUPA_KEY = 'sb_publishable_uA8YnxsEeZpwxfNL1DKhFQ_kZ-6B1n4';
-const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+/* ── Backend API base URL ──
+   Point this at wherever you deployed server.js (e.g. your Render
+   service URL). Everything below mimics the exact same
+   supa.from('table').select()/.insert()/.update()/.upsert()
+   chainable shape the rest of this file already calls, so nothing
+   else in this file needed to change — only this client. */
+const API_BASE = 'https://YOUR-SERVER-URL.onrender.com'; // <-- change this to your deployed server's URL
+
+function apiTable(table) {
+  const filters = {};
+  let orderField = null;
+
+  async function request(method, path, body) {
+    const res = await fetch(API_BASE + path, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    let json;
+    try { json = await res.json(); } catch (e) { json = null; }
+    if (!res.ok && !(json && 'error' in json)) {
+      return { data: null, error: { message: `Request failed (${res.status})` } };
+    }
+    return json;
+  }
+
+  function buildQuery() {
+    const parts = Object.entries(filters).map(([k, v]) => `${k}=${encodeURIComponent(v)}`);
+    if (orderField) parts.push(`order=${encodeURIComponent(orderField)}`);
+    return parts.length ? '?' + parts.join('&') : '';
+  }
+
+  const chain = {
+    select(cols) {
+      // The server doesn't need to know which columns were asked for — it
+      // always returns full rows — so this just keeps the chain going.
+      return chain;
+    },
+    eq(col, val) {
+      filters[col] = `eq.${val}`;
+      return chain;
+    },
+    in(col, vals) {
+      filters[col] = `in.(${vals.join(',')})`;
+      return chain;
+    },
+    ilike(col, val) {
+      filters[col] = `ilike.${val}`;
+      return chain;
+    },
+    order(col) {
+      orderField = col;
+      return chain;
+    },
+    async single() {
+      if (table === 'households') {
+        // households GET already returns a single object directly (or null)
+        const result = await request('GET', `/households${buildQuery()}`);
+        if (result && result.error) return { data: null, error: result.error };
+        return { data: result, error: result ? null : { message: 'Not found' } };
+      }
+      const result = await request('GET', `/users${buildQuery()}`);
+      const rows = Array.isArray(result) ? result : [];
+      return { data: rows[0] || null, error: rows[0] ? null : { message: 'Not found' } };
+    },
+    then(resolve, reject) {
+      // Allows `await supa.from(...).select(...)` without an explicit
+      // .single()/.eq() terminator (e.g. order-only or in()-only queries).
+      const path = table === 'households' ? `/households${buildQuery()}` : `/users${buildQuery()}`;
+      return request('GET', path).then(result => {
+        const data = Array.isArray(result) ? result : (result ? [result] : []);
+        resolve({ data, error: null });
+      }, reject);
+    },
+    async insert(row) {
+      return request('POST', `/${table}`, row);
+    },
+    async upsert(row) {
+      return request('PUT', `/${table}/${row.id}`, row);
+    },
+    update(fields) {
+      // .update({...}) returns a chain so .eq('id', x) can follow, matching
+      // the Supabase calling convention used throughout this file.
+      return {
+        async eq(col, val) {
+          return request('PATCH', `/${table}/${val}`, fields);
+        }
+      };
+    },
+  };
+  return chain;
+}
+
+const supa = { from: apiTable };
 
 const ICONS = {
   emi: '🏦', rent: '🏠', utilities: '💡', food: '🍱', transport: '⛽',
@@ -1727,6 +1834,18 @@ function periodIsPast(y, m){
   if (y < now.getFullYear()) return true;
   if (y > now.getFullYear()) return false;
   return m < now.getMonth();
+}
+/* "Has this month actually happened yet" — true for the current real month
+   and any month before it, false for anything still in the future (e.g. a
+   plan logged on the Next Month tab). Lifetime/YTD savings totals should
+   only ever count real, already-happened months — a planned future saving
+   isn't money you've actually saved yet, so it shouldn't be predicted into
+   your all-time total before it happens. */
+function periodIsPastOrCurrent(y, m){
+  const now = new Date();
+  if (y < now.getFullYear()) return true;
+  if (y > now.getFullYear()) return false;
+  return m <= now.getMonth();
 }
 
 /* Scan every month this user has ever recorded data for and return the
@@ -2701,6 +2820,22 @@ function renderSavings(){
 
   renderSavingsEntries(d);
 
+  // Show next month's PLANNED savings (logged via the Next Month tab)
+  // clearly separate from the real totals below — it's a plan, not money
+  // you've actually saved yet, so it must never blend into "Saved this
+  // year"/"Saved all-time" until that month actually happens.
+  const nxt = nextPeriod(yearIndex, monthIndex);
+  const nextMonthData = monthDataFor(hh, nxt.m, DB.session, nxt.y);
+  const plannedSavings = allExpenses(nextMonthData).filter(e=>e.cat==='savings' && !e.carriedFromPeriod).reduce((a,e)=>a+e.amount,0);
+  const plannedCard = document.getElementById('sav-planned-card');
+  if (plannedSavings > 0) {
+    document.getElementById('sav-planned-month').textContent = MONTHS[nxt.m] + ' ' + nxt.y;
+    document.getElementById('sav-planned-amount').textContent = fmt(plannedSavings);
+    plannedCard.style.display = '';
+  } else {
+    plannedCard.style.display = 'none';
+  }
+
   // "Saved this month" should mean money YOU actively put toward savings this
   // month — not last month's leftover surplus that got carried in and tagged
   // as a savings line behind the scenes. Those carried-forward lines are
@@ -2730,6 +2865,7 @@ function renderSavings(){
     if (!match) return; // skip any non-period keys (shouldn't exist, but be safe)
     const ky = parseInt(match[1], 10);
     const km = parseInt(match[2], 10);
+    if (!periodIsPastOrCurrent(ky, km)) return; // a planned future month hasn't happened yet — don't count it as savings you've already made
     const monthData = hh.data[key][DB.session];
     if (!monthData) return;
     const saved = allExpenses(monthData).filter(e=>e.cat==='savings' && !e.carriedFromPeriod).reduce((a,e)=>a+e.amount,0);
@@ -2781,14 +2917,15 @@ function renderSavings(){
     while (m < 0) { m += 12; y -= 1; }
     const key = periodKey(y, m);
     const monthData = hh.data[key] && hh.data[key][DB.session];
-    const saved = monthData ? allExpenses(monthData).filter(e=>e.cat==='savings' && !e.carriedFromPeriod).reduce((a,e)=>a+e.amount,0) : 0;
-    rows.push({ label: MONTHS[m] + ' ' + y, saved, isCurrent: (y===yearIndex && m===monthIndex) });
+    const isReal = periodIsPastOrCurrent(y, m);
+    const saved = (monthData && isReal) ? allExpenses(monthData).filter(e=>e.cat==='savings' && !e.carriedFromPeriod).reduce((a,e)=>a+e.amount,0) : 0;
+    rows.push({ label: MONTHS[m] + ' ' + y, saved, isCurrent: (y===yearIndex && m===monthIndex), isFuture: !isReal });
   }
   const maxSaved = Math.max(1, ...rows.map(r=>r.saved));
   histList.innerHTML = rows.map(r => `
     <div class="row">
       <div class="row-info">
-        <div class="row-name">${r.label}${r.isCurrent?' (this month)':''}</div>
+        <div class="row-name">${r.label}${r.isCurrent?' (this month)':''}${r.isFuture?' (upcoming)':''}</div>
         <div class="progress-bar" style="height:5px;margin-top:6px;background:var(--bg-deep)">
           <div class="progress-fill" style="width:${Math.round(r.saved/maxSaved*100)}%;background:var(--mint)"></div>
         </div>
@@ -3401,7 +3538,7 @@ function openModal(kind, id, defaultType){
       <div class="modal-overlay open" id="modal-savingsBreakdown" onclick="closeModalOnBg(event,'modal-savingsBreakdown')">
         <div class="modal" onclick="event.stopPropagation()">
           <h2>Saved all-time, by month</h2>
-          <div style="font-size:11.5px;color:var(--text3);margin-bottom:12px;">Every month with a savings entry that adds up to your all-time total of ${fmt(total)}. If a number here looks wrong, switch to that month and edit or delete the entry directly.</div>
+          <div style="font-size:11.5px;color:var(--text3);margin-bottom:12px;">Every month that's already happened with a savings entry, adding up to your all-time total of ${fmt(total)}. Anything planned for a future month on the Next Month tab is shown separately and isn't counted here yet. If a number below looks wrong, switch to that month and edit or delete the entry directly.</div>
           ${breakdown.length ? breakdown.map(b => `
             <div class="row">
               <div class="row-info"><div class="row-name">${MONTHS[b.m]} ${b.y}</div></div>
