@@ -1011,6 +1011,17 @@ const LABELS = {
   transport: 'Transport', insurance: 'Insurance', family: 'Family',
   subscriptions: 'Subscriptions', savings: 'Savings', other: 'Other'
 };
+/* Income gets its own category set — these are different kinds of money
+   coming in, not the same list used for where money goes out. */
+const INCOME_ICONS = {
+  salary: '💼', business: '🏪', freelance: '💻', rental: '🏠',
+  interest: '📈', gift: '🎁', refund: '↩️', other: '💰'
+};
+const INCOME_LABELS = {
+  salary: 'Salary', business: 'Business', freelance: 'Freelance / Gig',
+  rental: 'Rental income', interest: 'Interest / Dividends', gift: 'Gift',
+  refund: 'Refund / Reimbursement', other: 'Other'
+};
 const MEMBER_COLORS = { mint:'var(--mint)', lav:'var(--lav)', coral:'var(--coral)', sand:'var(--sand)', sky:'var(--sky)', rose:'var(--rose)' };
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const BANK_PRESETS = [
@@ -1572,7 +1583,7 @@ function seedRecurringIncomeIntoMonth(data, hh, userId, y, m){
     const already = data.income.find(i => i.recurringId === tpl.id);
     if (already) return;
     data.income.push({
-      id: data.nextIncId++, name: tpl.name, amount: tpl.amount, paidBy: tpl.paidBy, recurringId: tpl.id
+      id: data.nextIncId++, name: tpl.name, amount: tpl.amount, cat: tpl.cat || 'other', paidBy: tpl.paidBy, recurringId: tpl.id
     });
   });
 }
@@ -1711,7 +1722,12 @@ function findEarliestMonthWithData(hh){
 function applyCompletedMonthsToBalance(){
   const hh = currentHousehold();
   const acc = myAccounts();
-  if (!acc.banks.length && !acc.loans.length) return; // nothing to apply to yet
+  // Note: this used to return early entirely if there were no bank accounts
+  // or loans set up, which silently disabled carry-forward (and the ability
+  // to edit it) for anyone who hadn't added a bank account — even though the
+  // visible "Carried forward" income/savings lines don't actually need one.
+  // Now it always runs; only the bank-balance adjustment itself is skipped
+  // when there's no bank account to apply it to.
 
   let { y, m } = acc.lastAppliedPeriod
     ? nextPeriod(acc.lastAppliedPeriod.y, acc.lastAppliedPeriod.m)
@@ -1799,10 +1815,35 @@ function applyCompletedMonthsToBalance(){
    proportionally, same as before), the visible "Carried forward" income line
    in the month that received it, and its matching savings line if one
    exists — so all three stay consistent with each other. */
+/* The single source of truth for "what carried into the month I'm looking at
+   right now" is the actual carried-forward income line sitting in that
+   month's own data — not acc.lastCarryForward, which only reflects whichever
+   month the walk-forward bookkeeping most recently touched. Once more than
+   one month has passed since the user last opened the app, those two can
+   point at different months entirely, which is what made editing seem to
+   silently fail. This always looks at the real, currently-viewed month. */
+function carryForwardIntoCurrentMonth(){
+  const d = myData();
+  const incomeLine = d.income.find(i => i.carriedFromPeriod);
+  if (!incomeLine) return null;
+  const savingsLine = d.expensesFixed.find(e => e.carriedFromPeriod
+    && e.carriedFromPeriod.y === incomeLine.carriedFromPeriod.y
+    && e.carriedFromPeriod.m === incomeLine.carriedFromPeriod.m);
+  return { incomeLine, savingsLine, fromPeriod: incomeLine.carriedFromPeriod };
+}
+
+/* Correct the carry-forward that landed in the month currently being viewed,
+   by hand. Updates the visible income line (and its matching savings line,
+   if any) directly, and applies the difference to the bank balance so both
+   stay consistent — using the SAME amount this carry-forward already
+   contributed, not whatever acc.lastCarryForward happens to say, since that
+   can point at a different month once several months have been processed
+   in one pass. */
 async function editCarryForward(newAmount){
   const acc = myAccounts();
-  if (!acc.lastCarryForward) return;
-  const oldAmount = acc.lastCarryForward.amount || 0;
+  const current = carryForwardIntoCurrentMonth();
+  if (!current) return;
+  const oldAmount = current.incomeLine.amount;
   const delta = newAmount - oldAmount;
 
   if (delta !== 0 && acc.banks.length) {
@@ -1813,31 +1854,30 @@ async function editCarryForward(newAmount){
     });
   }
 
-  // Find and update the visible income/savings lines this carry-forward created
-  const { y: fy, m: fm } = acc.lastCarryForward.fromPeriod;
-  const hh = currentHousehold();
-  const nxt = nextPeriod(fy, fm);
-  const destData = monthDataFor(hh, nxt.m, DB.session, nxt.y);
-  const incomeLine = destData.income.find(i => i.carriedFromPeriod && i.carriedFromPeriod.y === fy && i.carriedFromPeriod.m === fm);
-  if (incomeLine) incomeLine.amount = newAmount;
-  const savingsLine = destData.expensesFixed.find(e => e.carriedFromPeriod && e.carriedFromPeriod.y === fy && e.carriedFromPeriod.m === fm);
+  current.incomeLine.amount = newAmount;
+  const d = myData();
   if (newAmount > 0) {
-    if (savingsLine) {
-      savingsLine.amount = newAmount;
-    } else if (!savingsLine) {
-      // the original carry-forward was a shortfall (no savings line existed) but
-      // it's now being corrected into a surplus — add the savings line fresh
-      destData.expensesFixed.push({
-        id: destData.nextExpId++, name: 'Carried forward into savings', amount: newAmount,
-        cat: 'savings', type: 'fixed', paidBy: DB.session, carriedFromPeriod: { y: fy, m: fm }
+    if (current.savingsLine) {
+      current.savingsLine.amount = newAmount;
+    } else {
+      d.expensesFixed.push({
+        id: d.nextExpId++, name: 'Carried forward into savings', amount: newAmount,
+        cat: 'savings', type: 'fixed', paidBy: DB.session, carriedFromPeriod: current.fromPeriod
       });
     }
-  } else if (savingsLine) {
+  } else if (current.savingsLine) {
     // corrected down to a shortfall (or zero) — a deficit can't be "savings"
-    destData.expensesFixed = destData.expensesFixed.filter(e => e !== savingsLine);
+    d.expensesFixed = d.expensesFixed.filter(e => e !== current.savingsLine);
   }
 
-  acc.lastCarryForward.amount = newAmount;
+  // Keep acc.lastCarryForward in sync too, in case it happened to be pointing
+  // at this same month.
+  if (acc.lastCarryForward && acc.lastCarryForward.fromPeriod
+      && acc.lastCarryForward.fromPeriod.y === current.fromPeriod.y
+      && acc.lastCarryForward.fromPeriod.m === current.fromPeriod.m) {
+    acc.lastCarryForward.amount = newAmount;
+  }
+
   logTransaction(myData(), { kind: 'account', action: 'edited', name: 'Carried forward amount corrected', amount: newAmount });
   await saveStore();
   closeModal('modal-editCarry');
@@ -2122,10 +2162,13 @@ function renderIncome(){
   } else {
     list.innerHTML = d.income.map(i=>`
       <div class="row">
-        <div class="row-icon" style="background:var(--mint-bg)">💼</div>
+        <div class="row-icon" style="background:var(--mint-bg)">${INCOME_ICONS[i.cat]||'💼'}</div>
         <div class="row-info">
           <div class="row-name">${i.name}${i.recurringId ? ' <span title="Repeats every month" style="font-size:11px;">🔁</span>' : ''}</div>
-          ${i.type==='rollover' ? '<div style="margin-top:4px;"><span class="tag tag-rollover">Carried forward</span></div>' : ''}
+          <div style="display:flex;gap:5px;margin-top:4px;flex-wrap:wrap;align-items:center;">
+            ${i.cat ? `<span class="tag">${INCOME_LABELS[i.cat]||i.cat}</span>` : ''}
+            ${i.type==='rollover' ? '<span class="tag tag-rollover">Carried forward</span>' : ''}
+          </div>
         </div>
         <div class="row-amount income num">${fmt(i.amount)}</div>
         <div class="row-actions">
@@ -2539,21 +2582,25 @@ function renderSavings(){
 
   renderGoals(acc, netWorth);
 
-  // the actual amount that was applied to the bank balance — editable, so we read
-  // it from acc.lastCarryForward rather than recalculating it live
+  // The ground truth for what's actually carried into the month being viewed
+  // right now is the carried-forward line living in that month's own data —
+  // not acc.lastCarryForward, which can point at a different month once
+  // several months have been processed in a single catch-up pass. This way
+  // what's shown here always matches exactly what the edit button changes.
   const carryList = document.getElementById('sav-carry-list');
   const editBtn = document.getElementById('sav-carry-edit-btn');
-  const lc = acc.lastCarryForward;
-  if (!lc) {
+  const current = carryForwardIntoCurrentMonth();
+  if (!current) {
     carryList.innerHTML = `<div class="empty-state"><div class="ic">↪️</div><div class="t">No prior month's data to carry forward yet.</div></div>`;
     editBtn.style.display = 'none';
   } else {
-    const { y: py, m: pm } = lc.fromPeriod;
+    const { y: py, m: pm } = current.fromPeriod;
+    const amount = current.incomeLine.amount;
     carryList.innerHTML = `
       <div class="row">
         <div class="row-icon">↪️</div>
         <div class="row-info"><div class="row-name">From ${MONTHS[pm]} ${py}</div></div>
-        <div class="row-amount num" style="color:${lc.amount>=0?'var(--mint)':'var(--coral)'}">${lc.amount>=0?'+':''}${fmt(lc.amount)}</div>
+        <div class="row-amount num" style="color:${amount>=0?'var(--mint)':'var(--coral)'}">${amount>=0?'+':''}${fmt(amount)}</div>
       </div>
     `;
     editBtn.style.display = '';
@@ -3061,6 +3108,11 @@ function openModal(kind, id, defaultType){
           <h2>${editing ? 'Edit income' : 'Add income'}</h2>
           <div class="form-group"><label>Source</label><input type="text" id="inc-name" placeholder="e.g. Salary" value="${editing?editing.name:''}"></div>
           <div class="form-group"><label>Amount (₹)</label><input type="number" id="inc-amount" placeholder="0" value="${editing?editing.amount:''}"></div>
+          <div class="form-group"><label>Category</label>
+            <select id="inc-cat">
+              ${Object.keys(INCOME_LABELS).map(c=>`<option value="${c}" ${(editing?editing.cat===c:c==='salary')?'selected':''}>${INCOME_LABELS[c]}</option>`).join('')}
+            </select>
+          </div>
           <div class="form-group" style="display:flex;align-items:center;gap:8px;">
             <input type="checkbox" id="inc-recurring" style="width:18px;height:18px;" ${(!editing || isRecurring) ? 'checked' : ''} onchange="document.getElementById('inc-recurring-end-wrap').style.display=this.checked?'':'none'">
             <label style="margin:0;" for="inc-recurring">Repeat every month</label>
@@ -3180,15 +3232,15 @@ function openModal(kind, id, defaultType){
         </div>
       </div>`;
   } else if (kind === 'editCarry') {
-    const acc = myAccounts();
-    const lc = acc.lastCarryForward;
-    const label = lc ? (MONTHS[lc.fromPeriod.m] + ' ' + lc.fromPeriod.y) : '';
+    const current = carryForwardIntoCurrentMonth();
+    const label = current ? (MONTHS[current.fromPeriod.m] + ' ' + current.fromPeriod.y) : '';
+    const amount = current ? current.incomeLine.amount : 0;
     html = `
       <div class="modal-overlay open" id="modal-editCarry" onclick="closeModalOnBg(event,'modal-editCarry')">
         <div class="modal" onclick="event.stopPropagation()">
           <h2>Edit carried-forward amount</h2>
           <div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;">This corrects how much was carried into this month from ${label}. The difference between the old and new amount is applied to your bank balance right away — nothing else changes.</div>
-          <div class="form-group"><label>Correct amount</label><input type="number" id="inp-carry-amount" placeholder="0" value="${lc?lc.amount:0}"></div>
+          <div class="form-group"><label>Correct amount</label><input type="number" id="inp-carry-amount" placeholder="0" value="${amount}"></div>
           <div class="modal-btns">
             <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-editCarry')">Cancel</button>
             <button class="btn btn-primary" style="flex:1" onclick="editCarryForward(parseFloat(document.getElementById('inp-carry-amount').value)||0)">Save</button>
@@ -3373,6 +3425,7 @@ async function saveExpense(editId){
 async function saveIncome(editId){
   const name = document.getElementById('inc-name').value.trim();
   const amount = parseFloat(document.getElementById('inc-amount').value);
+  const cat = document.getElementById('inc-cat').value;
   const wantsRecurring = document.getElementById('inc-recurring').checked;
   const endPeriod = parseIncomeEndMonthInput();
   if (!name || isNaN(amount)) return showToast('Fill in source and amount');
@@ -3391,29 +3444,29 @@ async function saveIncome(editId){
       applyForward = await confirmDialog('Apply this change to future months too?', 'This income repeats. You can update just this month, or this and every month after it.', 'Just this month', 'This & future months');
     }
 
-    Object.assign(existing, { name, amount });
+    Object.assign(existing, { name, amount, cat });
 
     if (oldRecurringId && applyForward) {
       const tpl = r.templates.find(t=>t.id===oldRecurringId);
-      if (tpl) { tpl.name=name; tpl.amount=amount; tpl.endPeriod = endPeriod; }
+      if (tpl) { tpl.name=name; tpl.amount=amount; tpl.cat=cat; tpl.endPeriod = endPeriod; }
       existing.recurringId = oldRecurringId;
     } else if (oldRecurringId && !applyForward) {
       delete existing.recurringId;
     } else if (!oldRecurringId && wantsRecurring) {
-      const tpl = { id: r.nextId++, name, amount, paidBy: DB.session, startPeriod: { y: yearIndex, m: monthIndex }, endPeriod };
+      const tpl = { id: r.nextId++, name, amount, cat, paidBy: DB.session, startPeriod: { y: yearIndex, m: monthIndex }, endPeriod };
       r.templates.push(tpl);
       existing.recurringId = tpl.id;
     }
-    logTransaction(d, { kind: 'income', action: 'edited', name, amount });
+    logTransaction(d, { kind: 'income', action: 'edited', name, amount, cat });
   } else {
-    const entry = { id: d.nextIncId++, name, amount, paidBy: DB.session };
+    const entry = { id: d.nextIncId++, name, amount, cat, paidBy: DB.session };
     if (wantsRecurring) {
-      const tpl = { id: r.nextId++, name, amount, paidBy: DB.session, startPeriod: { y: yearIndex, m: monthIndex }, endPeriod };
+      const tpl = { id: r.nextId++, name, amount, cat, paidBy: DB.session, startPeriod: { y: yearIndex, m: monthIndex }, endPeriod };
       r.templates.push(tpl);
       entry.recurringId = tpl.id;
     }
     d.income.push(entry);
-    logTransaction(d, { kind: 'income', action: 'added', name, amount });
+    logTransaction(d, { kind: 'income', action: 'added', name, amount, cat });
   }
   showToast('Saving…');
   await saveStore();
