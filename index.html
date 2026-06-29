@@ -827,7 +827,7 @@ input[type=range] { width: 100%; accent-color: var(--mint); height: 4px; }
           <div class="card-value num" id="sav-ytd">₹0</div>
           <div class="card-sub" id="sav-ytd-sub">Jan – now</div>
         </div>
-        <div class="card c-balance">
+        <div class="card c-balance" onclick="showSavingsBreakdown()" style="cursor:pointer;">
           <div class="card-label">Saved all-time</div>
           <div class="card-value num" id="sav-lifetime">₹0</div>
           <div class="card-sub" id="sav-lifetime-sub">Since you started</div>
@@ -1047,7 +1047,32 @@ const BANK_PRESETS = [
 ];
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
-function fmt(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
+/* Multi-currency display. This only changes how amounts are SHOWN — every
+   number is still stored as a plain number with no currency conversion
+   happening anywhere. Switching currency here does not convert ₹50,000 into
+   $50,000 at some exchange rate; it just changes the symbol and digit
+   grouping shown. That's intentional: this app doesn't track exchange rates,
+   so silently "converting" would misrepresent your real numbers. */
+const CURRENCIES = {
+  INR: { symbol: '₹', locale: 'en-IN', name: 'Indian Rupee' },
+  USD: { symbol: '$', locale: 'en-US', name: 'US Dollar' },
+  EUR: { symbol: '€', locale: 'de-DE', name: 'Euro' },
+  GBP: { symbol: '£', locale: 'en-GB', name: 'British Pound' },
+  AED: { symbol: 'AED ', locale: 'en-AE', name: 'UAE Dirham' },
+  SGD: { symbol: 'S$', locale: 'en-SG', name: 'Singapore Dollar' },
+  AUD: { symbol: 'A$', locale: 'en-AU', name: 'Australian Dollar' },
+  CAD: { symbol: 'C$', locale: 'en-CA', name: 'Canadian Dollar' },
+  JPY: { symbol: '¥', locale: 'ja-JP', name: 'Japanese Yen' },
+  CNY: { symbol: '¥', locale: 'zh-CN', name: 'Chinese Yuan' },
+};
+function myCurrency(){
+  const u = currentUser();
+  return (u && u.currency && CURRENCIES[u.currency]) ? u.currency : 'INR';
+}
+function fmt(n){
+  const c = CURRENCIES[myCurrency()];
+  return c.symbol + Math.round(n).toLocaleString(c.locale);
+}
 function todayKey(){ return new Date().toISOString().slice(0,7); }
 
 /* ============================================================
@@ -1093,6 +1118,7 @@ async function saveStore(){
     name: u.name,
     pin_hash: u.pinHash,
     color: u.color,
+    currency: u.currency || 'INR',
     household_id: u.householdId
   });
   if (userError) {
@@ -1130,7 +1156,7 @@ async function refreshFromCloud(){
     const { data: members } = await supa.from('users').select('*').in('id', data.member_ids);
     if (members) {
       members.forEach(m => {
-        DB.users[m.id] = { id: m.id, name: m.name, pinHash: m.pin_hash, color: m.color, householdId: m.household_id };
+        DB.users[m.id] = { id: m.id, name: m.name, pinHash: m.pin_hash, color: m.color, currency: m.currency, householdId: m.household_id };
       });
     }
   }
@@ -1257,11 +1283,12 @@ async function signUp(){
       failed_attempts: 0,
       locked_until: null,
       color: 'mint',
+      currency: 'INR',
       household_id: null
     });
     if (error) throw new Error(error.message);
 
-    DB.users[newId] = { id: newId, name, pinHash, color: 'mint', householdId: null };
+    DB.users[newId] = { id: newId, name, pinHash, color: 'mint', currency: 'INR', householdId: null };
     DB.session = newId;
     saveSession(newId);
 
@@ -1345,7 +1372,7 @@ async function signIn(){
     }
     await supa.from('users').update(successUpdate).eq('id', userId);
 
-    DB.users[user.id] = { id: user.id, name: user.name, pinHash: successUpdate.pin_hash || user.pin_hash, color: user.color, householdId: user.household_id };
+    DB.users[user.id] = { id: user.id, name: user.name, pinHash: successUpdate.pin_hash || user.pin_hash, color: user.color, currency: user.currency, householdId: user.household_id };
     DB.session = user.id;
     saveSession(user.id);
     document.getElementById('si-pin').value = '';
@@ -2572,6 +2599,10 @@ async function deleteLoan(id){
    hood this is the exact same data as a fixed expense tagged
    "savings" — this is just a more direct front door to it.
    ============================================================ */
+function showSavingsBreakdown(){
+  openModal('savingsBreakdown');
+}
+
 function renderSavingsEntries(d){
   const list = document.getElementById('savings-entries-list');
   const entries = d.expensesFixed.filter(e => e.cat === 'savings' && !e.carriedFromPeriod);
@@ -2693,6 +2724,7 @@ function renderSavings(){
   let lifetimeSaved = 0;
   let ytdSaved = 0;
   let earliestPeriod = null;
+  const lifetimeBreakdown = []; // every month that actually contributed, for the "why is this my total" view
   Object.keys(hh.data).forEach(key => {
     const match = key.match(/^y(-?\d+)m(\d+)$/);
     if (!match) return; // skip any non-period keys (shouldn't exist, but be safe)
@@ -2703,13 +2735,17 @@ function renderSavings(){
     const saved = allExpenses(monthData).filter(e=>e.cat==='savings' && !e.carriedFromPeriod).reduce((a,e)=>a+e.amount,0);
     lifetimeSaved += saved;
     if (ky === yearIndex) ytdSaved += saved;
+    if (saved !== 0) lifetimeBreakdown.push({ y: ky, m: km, saved });
     if (!earliestPeriod || ky < earliestPeriod.y || (ky === earliestPeriod.y && km < earliestPeriod.m)) {
       earliestPeriod = { y: ky, m: km };
     }
   });
   document.getElementById('sav-ytd').textContent = fmt(ytdSaved);
   document.getElementById('sav-lifetime').textContent = fmt(lifetimeSaved);
-  document.getElementById('sav-lifetime-sub').textContent = earliestPeriod ? `Since ${MONTHS[earliestPeriod.m]} ${earliestPeriod.y}` : 'Since you started';
+  document.getElementById('sav-lifetime-sub').textContent = earliestPeriod
+    ? `Since ${MONTHS[earliestPeriod.m]} ${earliestPeriod.y} · tap to see by month`
+    : 'Since you started';
+  window.__lifetimeSavingsBreakdown = lifetimeBreakdown.sort((a,b) => a.y - b.y || a.m - b.m);
 
   renderGoals(acc, netWorth);
 
@@ -3358,6 +3394,25 @@ function openModal(kind, id, defaultType){
           </div>
         </div>
       </div>`;
+  } else if (kind === 'savingsBreakdown') {
+    const breakdown = window.__lifetimeSavingsBreakdown || [];
+    const total = breakdown.reduce((a,b)=>a+b.saved, 0);
+    html = `
+      <div class="modal-overlay open" id="modal-savingsBreakdown" onclick="closeModalOnBg(event,'modal-savingsBreakdown')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>Saved all-time, by month</h2>
+          <div style="font-size:11.5px;color:var(--text3);margin-bottom:12px;">Every month with a savings entry that adds up to your all-time total of ${fmt(total)}. If a number here looks wrong, switch to that month and edit or delete the entry directly.</div>
+          ${breakdown.length ? breakdown.map(b => `
+            <div class="row">
+              <div class="row-info"><div class="row-name">${MONTHS[b.m]} ${b.y}</div></div>
+              <div class="row-amount num" style="color:var(--lav)">${fmt(b.saved)}</div>
+            </div>
+          `).join('') : `<div class="empty-state"><div class="ic">💎</div><div class="t">No savings logged in any month yet.</div></div>`}
+          <div class="modal-btns" style="margin-top:12px;">
+            <button class="btn btn-secondary btn-block" onclick="closeModal('modal-savingsBreakdown')">Close</button>
+          </div>
+        </div>
+      </div>`;
   } else if (kind === 'savingsEntry') {
     const d = myData();
     const editing = id ? d.expensesFixed.find(e=>String(e.id)===String(id)) : null;
@@ -3425,6 +3480,12 @@ function openModal(kind, id, defaultType){
             </div>
           </div>
           <div class="form-group"><label>Household</label><input type="text" value="${hh.name}" disabled style="opacity:.6"></div>
+          <div class="form-group"><label>Currency</label>
+            <select id="set-currency">
+              ${Object.keys(CURRENCIES).map(c=>`<option value="${c}" ${myCurrency()===c?'selected':''}>${CURRENCIES[c].symbol.trim()} ${CURRENCIES[c].name} (${c})</option>`).join('')}
+            </select>
+            <div style="font-size:11.5px;color:var(--text3);margin-top:6px;">This only changes how amounts are displayed — it does not convert your numbers between currencies.</div>
+          </div>
           <div class="modal-btns">
             <button class="btn btn-secondary" style="flex:1" onclick="closeModal('modal-settings')">Close</button>
             <button class="btn btn-primary" style="flex:1" onclick="saveSettings()">Save</button>
@@ -3444,9 +3505,11 @@ function pickSettingsColor(c){
 async function saveSettings(){
   const name = document.getElementById('set-name').value.trim();
   const color = document.querySelector('#set-color-pick .pill-opt.sel').dataset.color;
+  const currency = document.getElementById('set-currency').value;
   if (!name) return showToast('Name cannot be empty');
   currentUser().name = name;
   currentUser().color = color;
+  currentUser().currency = currency;
   showToast('Saving…');
   await saveStore();
   closeModal('modal-settings');
@@ -3735,7 +3798,7 @@ function showToast(msg){
       return;
     }
 
-    DB.users[user.id] = { id: user.id, name: user.name, pinHash: user.pin_hash, color: user.color, householdId: user.household_id };
+    DB.users[user.id] = { id: user.id, name: user.name, pinHash: user.pin_hash, color: user.color, currency: user.currency, householdId: user.household_id };
     DB.session = user.id;
 
     if (user.household_id) {
