@@ -1025,8 +1025,8 @@ input[type=range] { width: 100%; accent-color: var(--brand); height: 4px; }
 /* ── Supabase client ──
    Replace these with your own project's URL and anon/publishable key,
    found in Supabase Dashboard → Project Settings → API. */
-const SUPA_URL = 'https://YOUR-PROJECT-REF.supabase.co'; // <-- change this
-const SUPA_KEY = 'YOUR-ANON-PUBLIC-KEY'; // <-- change this
+const SUPA_URL = 'https://lsyrynzkmyludtaeshnx.supabase.co'; // your project URL, already filled in
+const SUPA_KEY = 'PASTE-YOUR-ANON-PUBLIC-KEY-HERE'; // <-- paste your anon key from Project Settings → API here
 const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 const ICONS = {
@@ -1311,6 +1311,14 @@ async function signUp(){
       household_id: null
     });
     if (error) throw new Error(error.message);
+
+    // Verify the row actually landed in the database. Without this, a
+    // misconfigured Supabase URL/key or a silently-rejected write could
+    // make signup look successful when nothing was actually saved.
+    const { data: verifyRow, error: verifyErr } = await supa.from('users').select('id').eq('id', newId).single();
+    if (verifyErr || !verifyRow) {
+      throw new Error('Account creation did not save — check your Supabase URL and key are correct in index.html, and that the SQL setup script has been run.');
+    }
 
     DB.users[newId] = { id: newId, name, pinHash, color: 'mint', currency: 'INR', householdId: null };
     DB.session = newId;
