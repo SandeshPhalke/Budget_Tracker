@@ -1035,11 +1035,21 @@ function apiTable(table) {
   let orderField = null;
 
   async function request(method, path, body) {
-    const res = await fetch(API_BASE + path, {
-      method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    let res;
+    try {
+      res = await fetch(API_BASE + path, {
+        method,
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (networkErr) {
+      // The server is unreachable entirely (wrong API_BASE, DNS failure,
+      // server down, CORS blocked, no internet). Without this catch, this
+      // throws all the way up and silently breaks whatever called it —
+      // e.g. the sign-in screen's profile dropdown gets stuck on "Loading…"
+      // forever with no visible error at all.
+      return { data: null, error: { message: 'Could not reach the server. Check your internet connection or try again shortly.' } };
+    }
     let json;
     try { json = await res.json(); } catch (e) { json = null; }
     if (!res.ok && !(json && 'error' in json)) {
@@ -1084,6 +1094,7 @@ function apiTable(table) {
         return { data: result, error: result ? null : { message: 'Not found' } };
       }
       const result = await request('GET', `/users${buildQuery()}`);
+      if (result && !Array.isArray(result) && result.error) return { data: null, error: result.error };
       const rows = Array.isArray(result) ? result : [];
       return { data: rows[0] || null, error: rows[0] ? null : { message: 'Not found' } };
     },
@@ -1092,6 +1103,10 @@ function apiTable(table) {
       // .single()/.eq() terminator (e.g. order-only or in()-only queries).
       const path = table === 'households' ? `/households${buildQuery()}` : `/users${buildQuery()}`;
       return request('GET', path).then(result => {
+        if (result && typeof result === 'object' && !Array.isArray(result) && 'error' in result && result.error) {
+          resolve({ data: null, error: result.error });
+          return;
+        }
         const data = Array.isArray(result) ? result : (result ? [result] : []);
         resolve({ data, error: null });
       }, reject);
@@ -1332,7 +1347,12 @@ function generateRecoveryCode(){
 async function populateSignInProfiles(){
   const sel = document.getElementById('si-user-select');
   sel.innerHTML = `<option value="">Loading…</option>`;
-  const { data } = await supa.from('users').select('id, name').order('name');
+  const { data, error } = await supa.from('users').select('id, name').order('name');
+  if (error) {
+    sel.innerHTML = `<option value="">Couldn't load — check connection</option>`;
+    showToast(error.message || "Couldn't load profiles");
+    return;
+  }
   if (!data || !data.length) {
     sel.innerHTML = `<option value="">No accounts yet — create one</option>`;
     return;
