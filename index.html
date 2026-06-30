@@ -204,6 +204,8 @@ h1, h2, h3, .display { font-family: var(--font-display); letter-spacing: -0.01em
 .icon-pill:active { background: var(--surface3); }
 .month-pill { font-size: 12.5px; color: var(--text2); background: var(--surface2); padding: 8px 13px; border-radius: 20px; border: 0.5px solid var(--border); display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .month-pill select { background: none; border: none; color: var(--text); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.live-clock { font-size: 11.5px; color: var(--text3); white-space: nowrap; }
+.live-clock .live-time { color: var(--text2); font-weight: 600; margin-left: 4px; }
 
 .avatar-stack { display: flex; }
 .avatar-stack .avatar-dot { width: 30px; height: 30px; font-size: 12px; border: 2px solid var(--surface); margin-left: -10px; }
@@ -342,12 +344,19 @@ input[type=range] { width: 100%; accent-color: var(--brand); height: 4px; }
 .form-group input, .form-group select { width: 100%; padding: 11px 13px; border: 0.5px solid var(--border2); border-radius: var(--radius-sm); font-size: 15px; background: var(--bg-deep); color: var(--text); }
 .form-group input:focus, .form-group select:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
 .modal-btns { display: flex; gap: 10px; margin-top: 8px; }
+.date-picker-year-row { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 12px 0 18px; }
+.date-picker-year { font-family: var(--font-display); font-size: 18px; font-weight: 700; min-width: 64px; text-align: center; }
+.date-picker-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.date-picker-month { padding: 14px 8px; border-radius: 12px; border: 0.5px solid var(--border2); background: var(--bg-deep); color: var(--text2); font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.date-picker-month.today { border-color: var(--brand); color: var(--brand); }
+.date-picker-month.sel { background: var(--brand); color: var(--brand-ink); border-color: transparent; }
 .pill-select { display: flex; gap: 7px; flex-wrap: wrap; }
 .pill-opt { padding: 8px 13px; border-radius: 20px; border: 0.5px solid var(--border2); background: var(--bg-deep); color: var(--text2); font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .pill-opt.sel { background: var(--mint); color: #102015; border-color: transparent; }
 
 .fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--brand), var(--brand-dark)); color: var(--brand-ink); font-size: 24px; border: none; box-shadow: 0 6px 20px rgba(0,0,0,0.35); cursor: pointer; z-index: 50; display: none; align-items: center; justify-content: center; }
 @media (max-width: 760px) { .fab { display: flex; } }
+@media (max-width: 480px) { .live-clock { display: none; } }
 
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); }
 .empty-state .ic { font-size: 32px; margin-bottom: 10px; }
@@ -598,14 +607,10 @@ input[type=range] { width: 100%; accent-color: var(--brand); height: 4px; }
         </div>
       </div>
       <div class="topbar-right">
-        <div class="month-pill">
+        <div class="live-clock" id="live-clock" title="Current date and time"></div>
+        <div class="month-pill" id="monthYearBtn" onclick="openModal('datePicker')" style="cursor:pointer;">
           <span>📅</span>
-          <select id="monthSelect" onchange="onMonthChange()">
-            <option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option>
-            <option>May</option><option>Jun</option><option selected>Jul</option>
-            <option>Aug</option><option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
-          </select>
-          <select id="yearSelect" onchange="onMonthChange()" style="margin-left:4px;"></select>
+          <span id="monthYearLabel">—</span>
         </div>
         <div class="icon-pill" onclick="openModal('settings')" title="Settings">⚙️</div>
         <div class="icon-pill" onclick="syncFromCloud()" title="Sync latest data">🔄</div>
@@ -1026,7 +1031,7 @@ input[type=range] { width: 100%; accent-color: var(--brand); height: 4px; }
    Replace these with your own project's URL and anon/publishable key,
    found in Supabase Dashboard → Project Settings → API. */
 const SUPA_URL = 'https://lsyrynzkmyludtaeshnx.supabase.co'; // your project URL, already filled in
-const SUPA_KEY = 'PASTE-YOUR-ANON-PUBLIC-KEY-HERE'; // <-- paste your anon key from Project Settings → API here
+const SUPA_KEY = 'sb_publishable_uA8YnxsEeZpwxfNL1DKhFQ_kZ-6B1n4';
 const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 const ICONS = {
@@ -2037,17 +2042,8 @@ async function enterApp(){
   document.getElementById('me-avatar').style.background = MEMBER_COLORS[user.color] || 'var(--mint)';
   document.getElementById('invite-code-display').textContent = hh.inviteCode;
 
-  const yearSelect = document.getElementById('yearSelect');
-  const thisYear = new Date().getFullYear();
-  if (!yearSelect.options.length) {
-    for (let y = thisYear - 5; y <= thisYear + 1; y++) {
-      const opt = document.createElement('option');
-      opt.value = y; opt.textContent = y;
-      yearSelect.appendChild(opt);
-    }
-  }
-  yearSelect.value = yearIndex;
-  document.getElementById('monthSelect').selectedIndex = monthIndex;
+  updateMonthYearLabel();
+  startLiveClock();
   renderEverything();
 }
 
@@ -2058,11 +2054,45 @@ async function syncFromCloud(){
   showToast('Up to date ✓');
 }
 
-function onMonthChange(){
-  monthIndex = document.getElementById('monthSelect').selectedIndex;
-  yearIndex = parseInt(document.getElementById('yearSelect').value, 10) || yearIndex;
+function updateMonthYearLabel(){
+  const el = document.getElementById('monthYearLabel');
+  if (el) el.textContent = MONTHS[monthIndex] + ' ' + yearIndex;
+}
+
+/* Called from the calendar date-picker modal when a month is tapped. */
+function pickMonthYear(m, y){
+  monthIndex = m;
+  yearIndex = y;
+  window.__datePickerYear = null; // reset browse state for next time the picker opens
+  updateMonthYearLabel();
   seedFreshMonthIfFirst();
+  closeModal('modal-datePicker');
   renderEverything();
+}
+
+/* Browsing a different year inside the open date-picker modal, without
+   actually changing which month the rest of the app is showing yet. */
+function changeDatePickerYear(delta){
+  window.__datePickerYear = (window.__datePickerYear || yearIndex) + delta;
+  openModal('datePicker'); // re-render the modal with the new year
+}
+
+/* ── Live clock in the topbar: today's real date and current time,
+   separate from whatever month you're viewing in the app. Updates
+   every second; harmless if the topbar isn't on screen yet. ── */
+let liveClockTimer = null;
+function startLiveClock(){
+  if (liveClockTimer) return; // already running
+  function tick(){
+    const el = document.getElementById('live-clock');
+    if (!el) return; // not on the app screen right now
+    const now = new Date();
+    const dateStr = now.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    const timeStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    el.innerHTML = dateStr + '<span class="live-time">' + timeStr + '</span>';
+  }
+  tick();
+  liveClockTimer = setInterval(tick, 1000);
 }
 
 function seedFreshMonthIfFirst(){
@@ -3512,6 +3542,26 @@ function openModal(kind, id, defaultType){
           </div>
         </div>
       </div>`;
+  } else if (kind === 'datePicker') {
+    const pickerYear = window.__datePickerYear || yearIndex;
+    const monthBtns = MONTHS.map((label, i) => {
+      const isSelected = (i === monthIndex && pickerYear === yearIndex);
+      const isCurrentRealMonth = (i === new Date().getMonth() && pickerYear === new Date().getFullYear());
+      return `<button class="date-picker-month ${isSelected?'sel':''} ${isCurrentRealMonth?'today':''}" onclick="pickMonthYear(${i}, ${pickerYear})">${label}</button>`;
+    }).join('');
+    html = `
+      <div class="modal-overlay open" id="modal-datePicker" onclick="closeModalOnBg(event,'modal-datePicker')">
+        <div class="modal" onclick="event.stopPropagation()">
+          <h2>Jump to a month</h2>
+          <div class="date-picker-year-row">
+            <button class="icon-btn" onclick="changeDatePickerYear(-1)">◀</button>
+            <div class="date-picker-year">${pickerYear}</div>
+            <button class="icon-btn" onclick="changeDatePickerYear(1)">▶</button>
+          </div>
+          <div class="date-picker-grid">${monthBtns}</div>
+          <button class="btn btn-secondary btn-block" style="margin-top:14px;" onclick="closeModal('modal-datePicker')">Cancel</button>
+        </div>
+      </div>`;
   } else if (kind === 'editCarry') {
     const current = carryForwardIntoCurrentMonth();
     const label = current ? (MONTHS[current.fromPeriod.m] + ' ' + current.fromPeriod.y) : '';
@@ -3593,6 +3643,7 @@ function signOut(){
 function closeModal(id){
   const el = document.getElementById(id);
   if (el) el.remove();
+  if (id === 'modal-datePicker') window.__datePickerYear = null;
   // If this close happened while we were temporarily viewing "next month" for
   // the planning tab, restore the real month now and refresh that tab so it
   // reflects whatever was just saved/cancelled.
